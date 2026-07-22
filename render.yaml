@@ -35,6 +35,9 @@ services:
         sync: false
       - key: DB_NAME
         sync: false
+      # Set to "true" for a managed MySQL that requires TLS.
+      - key: DB_SSL
+        sync: false
       # Email (OTP / notifications) — optional but recommended.
       - key: EMAIL_HOST
         sync: false
