@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Design language: claymorphism + iOS minimalism, ported from the web app.
+  Colors are exposed as CSS variables so light/dark follow the device scheme
+  (NativeWind resolves prefers-color-scheme on native). RN's style engine does
+  not support color-mix()/inset shadows, so a couple of tokens are precomputed.
+*/
+:root {
+  --background: #eef1ee;
+  --foreground: #14181a;
+  --card: #ffffff;
+  --card-foreground: #14181a;
+  --popover: #ffffff;
+  --popover-foreground: #14181a;
+  --primary: #34c759;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1ee;
+  --secondary-foreground: #3a4046;
+  --muted: #f1f4f1;
+  --muted-foreground: #6c7278;
+  --accent: #e8efe9;
+  --accent-foreground: #1f6b38;
+  --destructive: #ff3b30;
+  --destructive-foreground: #ffffff;
+  --border: #e4e8e4;
+  --input: #e4e8e4;
+  --ring: #34c759;
+  --chart-1: #34c759;
+  --chart-2: #30b0c7;
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #ff375f;
+  /* Precomputed clay-inset surface (was color-mix of background/card). */
+  --clay-inset-bg: #f4f6f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0c0a;
+    --foreground: #f3f5f3;
+    --card: #16191a;
+    --card-foreground: #f3f5f3;
+    --popover: #16191a;
+    --popover-foreground: #f3f5f3;
+    --primary: #30d158;
+    --primary-foreground: #06210f;
+    --secondary: #1d211e;
+    --secondary-foreground: #e6e9e6;
+    --muted: #1d211e;
+    --muted-foreground: #9aa39c;
+    --accent: #1f2a22;
+    --accent-foreground: #4fd96f;
+    --destructive: #ff453a;
+    --destructive-foreground: #ffffff;
+    --border: #262b27;
+    --input: #262b27;
+    --ring: #30d158;
+    --chart-1: #30d158;
+    --chart-2: #40c8e0;
+    --chart-3: #ff9f0a;
+    --chart-4: #7d7aff;
+    --chart-5: #ff6482;
+    --clay-inset-bg: #101312;
+  }
+}

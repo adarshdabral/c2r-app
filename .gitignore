@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Secrets & credentials — never commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+
+# Expo / RN
+.expo/
+**/.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+
+# Native build output
+android/
+ios/
+
+# Testing / coverage
+coverage/
+**/coverage/
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS / editor
+.DS_Store
+**/.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local scratch / backups
+backup.txt
+m.txt
