@@ -514,7 +514,16 @@ const startServer = async () => {
     startPickupSweeper();
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
+    // Print the whole error — a bare `error.message` is empty for some pool
+    // failures and hides the real cause (almost always the database).
+    console.error('❌ Failed to start server:', error?.message || error);
+    if (error?.code) console.error('   code:', error.code);
+    if (error?.stack) console.error(error.stack);
+    console.error(
+      '   If this is a database error, verify the DB is reachable and that ' +
+      'DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME are set. ' +
+      'Render has no managed MySQL — point these at an external MySQL.'
+    );
     process.exit(1);
   }
 };
