@@ -1,15 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
-import MapView, {
-  Marker,
-  Polyline,
-  UrlTile,
-  PROVIDER_DEFAULT,
-  type Region,
-} from "react-native-maps";
 import type { Station } from "@/lib/api";
-
-type LatLng = { lat: number; lng: number };
+import { LeafletMap, type LatLng, type MapMarker } from "@/components/map/LeafletMap";
 
 interface StoreMapProps {
   stores: Station[];
@@ -24,20 +16,11 @@ interface StoreMapProps {
 const isLatLng = (lat: number, lng: number) =>
   Number.isFinite(lat) && Number.isFinite(lng);
 
-const toRegion = (c: LatLng, delta = 0.08): Region => ({
-  latitude: c.lat,
-  longitude: c.lng,
-  latitudeDelta: delta,
-  longitudeDelta: delta,
-});
-
 /**
- * Store map — the react-native-maps port of the web Leaflet store-map. Renders
- * OSM raster tiles (no API key, matching the web stack), store markers, the
- * user's location, and a route line from the user to the selected store.
- *
- * The route is fetched from the public OSRM server (same as web); on any failure
- * it falls back to a straight dashed line so a route is always shown.
+ * Store map — Leaflet/OSM in a WebView (no API key; works on Android + iOS in
+ * Expo Go). Shows store markers (selected one highlighted), the user's location,
+ * and a route line from the user to the selected store. The route is fetched
+ * from the public OSRM server; on any failure it falls back to a straight line.
  */
 export function StoreMap({
   stores,
@@ -47,22 +30,16 @@ export function StoreMap({
   onSelect,
   className,
 }: StoreMapProps) {
-  const mapRef = useRef<MapView>(null);
-  const [route, setRoute] = useState<{ lat: number; lng: number }[] | null>(null);
+  const [route, setRoute] = useState<LatLng[] | null>(null);
 
-  const initial =
+  // Stable initial focus captured once; `center`/`userLocation` override it.
+  const initial = useRef<LatLng | null>(
     userLocation ||
-    center ||
-    (stores[0] && isLatLng(Number(stores[0].latitude), Number(stores[0].longitude))
-      ? { lat: Number(stores[0].latitude), lng: Number(stores[0].longitude) }
-      : null);
-
-  // Recenter when `center` changes (location search).
-  useEffect(() => {
-    if (center && mapRef.current) {
-      mapRef.current.animateToRegion(toRegion(center, 0.05), 400);
-    }
-  }, [center]);
+      center ||
+      (stores[0] && isLatLng(Number(stores[0].latitude), Number(stores[0].longitude))
+        ? { lat: Number(stores[0].latitude), lng: Number(stores[0].longitude) }
+        : null)
+  ).current;
 
   const selectedStore = stores.find((s) => s.id === selectedId) || null;
 
@@ -105,52 +82,35 @@ export function StoreMap({
     };
   }, [userLocation, selectedStore]);
 
-  if (!initial) {
+  const focus = center || userLocation || initial;
+
+  if (!focus) {
     return (
       <View className="min-h-[320px] flex-1 items-center justify-center rounded-2xl bg-muted" />
     );
   }
 
+  const markers: MapMarker[] = stores
+    .filter((s) => isLatLng(Number(s.latitude), Number(s.longitude)))
+    .map((s) => ({
+      id: s.id,
+      lat: Number(s.latitude),
+      lng: Number(s.longitude),
+      color: "#34c759",
+      selected: s.id === selectedId,
+    }));
+
   return (
     <View className={className ?? "min-h-[320px] flex-1 overflow-hidden rounded-2xl"}>
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_DEFAULT}
-        style={{ flex: 1 }}
-        initialRegion={toRegion(initial)}
-        showsUserLocation={Boolean(userLocation)}
-      >
-        {/* OSM raster tiles (matches the web look, no API key). */}
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          flipY={false}
-        />
-
-        {stores.map((s) => {
-          const lat = Number(s.latitude);
-          const lng = Number(s.longitude);
-          if (!isLatLng(lat, lng)) return null;
-          return (
-            <Marker
-              key={s.id}
-              coordinate={{ latitude: lat, longitude: lng }}
-              title={s.name || s.storeName || "Store"}
-              description={s.distance != null ? `${s.distance} km away` : undefined}
-              pinColor={s.id === selectedId ? "#16a34a" : "#34c759"}
-              onPress={() => onSelect?.(s.id)}
-            />
-          );
-        })}
-
-        {route ? (
-          <Polyline
-            coordinates={route.map((c) => ({ latitude: c.lat, longitude: c.lng }))}
-            strokeColor="#2563eb"
-            strokeWidth={4}
-          />
-        ) : null}
-      </MapView>
+      <LeafletMap
+        center={focus}
+        zoom={12}
+        markers={markers}
+        userLocation={userLocation}
+        route={route}
+        onMarkerPress={(id) => onSelect?.(Number(id))}
+        className="flex-1"
+      />
     </View>
   );
 }
