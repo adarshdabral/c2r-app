@@ -1,0 +1,53 @@
+# Render Blueprint — deploys the BACKEND API only.
+# The frontend is an Expo / React Native mobile app (run via Expo Go / a native
+# build), not a Render web service, so it is intentionally not defined here.
+#
+# NOTE: this API uses MySQL (mysql2). Render has no managed MySQL, so point the
+# DB_* vars at an external MySQL (PlanetScale, Aiven, Railway, RDS, …). The
+# server runs createTables() on boot and will fail to start if the DB is
+# unreachable.
+services:
+  - type: web
+    name: c2r-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+      - key: REWARDS_POINTS_PER_KG
+        value: "10"
+      # Secret — Render generates a strong value automatically.
+      - key: JWT_SECRET
+        generateValue: true
+      # External MySQL — set these in the Render dashboard.
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      # Email (OTP / notifications) — optional but recommended.
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Rewards ledger — optional (feature is off by default).
+      - key: REWARDS_LEDGER_URL
+        sync: false
+      - key: REWARDS_LEDGER_API_KEY
+        sync: false
