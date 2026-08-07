@@ -51,6 +51,8 @@ import {
 } from "@/components/ui";
 import { ContentSection } from "@/features/admin-content";
 import { AdminSettings as AdminSettingsPanel } from "@/features/AdminSettings";
+import { AdminAnalytics } from "@/features/AdminAnalytics";
+import { useFeatures } from "@/context/FeatureContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GradientHeader } from "@/components/GradientHeader";
 import { PressableScale } from "@/components/motion/PressableScale";
@@ -67,7 +69,7 @@ import {
 /* MySQL tinyint/bool coercion — matches the web page's `bool()` helper. */
 const bool = (v: unknown) => v === true || v === 1;
 
-type Tab = "overview" | "stores" | "users" | "requests" | "disputes" | "content" | "settings";
+type Tab = "overview" | "stores" | "users" | "requests" | "disputes" | "analytics" | "content" | "settings";
 
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
@@ -75,6 +77,7 @@ const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "users", label: "Users", icon: Users },
   { key: "requests", label: "Requests", icon: Truck },
   { key: "disputes", label: "Disputes", icon: Scale },
+  { key: "analytics", label: "Analytics", icon: TrendingUp },
   { key: "content", label: "Content", icon: LayoutTemplate },
   { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
@@ -82,7 +85,10 @@ const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
 export default function AdminDashboardScreen() {
   const { signOut } = useAuth();
   const c = useColors();
+  const { flags } = useFeatures();
   const [tab, setTab] = useState<Tab>("overview");
+  // Hide the Analytics tab when the feature is disabled.
+  const tabs = TABS.filter((t) => t.key !== "analytics" || flags.analytics);
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-background">
@@ -112,7 +118,7 @@ export default function AdminDashboardScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
         >
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const active = tab === t.key;
             const Icon = t.icon;
             return (
@@ -149,6 +155,7 @@ export default function AdminDashboardScreen() {
         {tab === "users" && <UsersSection />}
         {tab === "requests" && <RequestsSection />}
         {tab === "disputes" && <DisputesSection />}
+        {tab === "analytics" && flags.analytics && <AdminAnalytics />}
         {tab === "content" && <ContentSection />}
         {tab === "settings" && <SettingsSection />}
       </View>

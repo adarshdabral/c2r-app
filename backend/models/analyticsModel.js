@@ -82,6 +82,56 @@ const recyclingVolume = async () => {
   return { totalKg: Math.round(Number(row.totalKg) * 10) / 10, completed: Number(row.completed) };
 };
 
+// Platform-wide collection-drive totals.
+const driveTotals = async () => {
+  const [[d]] = await db.query(`
+    SELECT COUNT(*) AS drives,
+           COALESCE(SUM(status = 'UPCOMING'), 0) AS upcoming,
+           COALESCE(SUM(status = 'COMPLETED'), 0) AS completed
+      FROM collection_drives
+  `);
+  const [[r]] = await db.query(`
+    SELECT COALESCE(SUM(status = 'GOING'), 0) AS rsvps,
+           COALESCE(SUM(status = 'GOING' AND checked_in_at IS NOT NULL), 0) AS checkedIn
+      FROM collection_drive_rsvps
+  `);
+  return {
+    drives: Number(d.drives),
+    upcoming: Number(d.upcoming),
+    completed: Number(d.completed),
+    rsvps: Number(r.rsvps),
+    checkedIn: Number(r.checkedIn),
+  };
+};
+
+// Chatbot usage.
+const chatbotUsage = async () => {
+  const [[row]] = await db.query(`
+    SELECT (SELECT COUNT(*) FROM chat_messages WHERE role = 'user') AS messages,
+           (SELECT COUNT(*) FROM chat_conversations) AS conversations,
+           (SELECT COUNT(DISTINCT user_id) FROM chat_messages) AS users
+  `);
+  return { messages: Number(row.messages), conversations: Number(row.conversations), users: Number(row.users) };
+};
+
+// Feature usage — enabled state (from feature_flags) + an activity count per
+// feature where one is measurable.
+const featureUsage = async () => {
+  const [flags] = await db.query('SELECT `key`, name, enabled FROM feature_flags ORDER BY id');
+  const [[counts]] = await db.query(`
+    SELECT (SELECT COUNT(*) FROM chat_messages WHERE role = 'user') AS chatbot,
+           (SELECT COUNT(*) FROM reward_ledger) AS rewards,
+           (SELECT COUNT(*) FROM notifications) AS notifications
+  `);
+  const usageFor = { chatbot: Number(counts.chatbot), rewards: Number(counts.rewards), notifications: Number(counts.notifications) };
+  return flags.map((f) => ({
+    key: f.key,
+    name: f.name,
+    enabled: !!f.enabled,
+    usage: usageFor[f.key] ?? null,
+  }));
+};
+
 module.exports = {
   platformHealth,
   activeUsers,
@@ -89,4 +139,7 @@ module.exports = {
   userGrowth,
   pickupSeries,
   recyclingVolume,
+  driveTotals,
+  chatbotUsage,
+  featureUsage,
 };

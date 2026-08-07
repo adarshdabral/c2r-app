@@ -1013,3 +1013,28 @@ export const getActivity = (params?: { source?: string; search?: string; page?: 
       { params }
     )
     .then((r) => r.data);
+
+/* ============================== ADMIN ANALYTICS ============================== */
+
+export type SeriesPoint = { day: string; count: number };
+export type AnalyticsDashboard = {
+  health: {
+    users: number; recyclers: number; suspended: number; stores: number;
+    storesPending: number; openDisputes: number; pickupsToday: number; pickupsCompleted: number;
+  };
+  activeUsers: { dau: number; wau: number; mau: number };
+  volume: { totalKg: number; completed: number };
+  roles: { role: string; count: number }[];
+  growth: SeriesPoint[];
+  pickups: SeriesPoint[];
+  drives: { drives: number; upcoming: number; completed: number; rsvps: number; checkedIn: number };
+  rewards: { pointsEarned?: number; pointsSpent?: number; redemptions?: number; badgesAwarded?: number };
+  chatbot: { messages: number; conversations: number; users: number };
+  features: { key: string; name: string; enabled: boolean; usage: number | null }[];
+  generatedAt: string;
+};
+
+export const getAnalyticsDashboard = () =>
+  api.get<AnalyticsDashboard>("/admin/analytics/dashboard").then((r) => r.data);
+
+export const analyticsExportPath = () => "/admin/analytics/export";

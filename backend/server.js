@@ -29,6 +29,7 @@ const featureRoutes = require('./routes/featureRoutes');
 const personalizationRoutes = require('./routes/personalizationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const activityRoutes = require('./routes/activityRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const { requireFeature } = require('./middleware/featureFlag');
 const { FEATURE_REGISTRY } = require('./config/features');
 const featureFlagModel = require('./models/featureFlagModel');
@@ -86,6 +87,8 @@ app.use('/api/assistant', requireFeature('chatbot'), assistantRoutes);
 app.use('/api/personalization', requireFeature('personalization'), personalizationRoutes);
 app.use('/api/notifications', requireFeature('notifications'), notificationRoutes);
 app.use('/api/activity', requireFeature('activity'), activityRoutes);
+// More specific analytics path (feature-gated) before the general admin router.
+app.use("/api/admin/analytics", requireFeature('analytics'), analyticsRoutes);
 app.use("/api/admin", adminRoutes);
 
 /* ----------------------- 404 HANDLER ----------------------- */
