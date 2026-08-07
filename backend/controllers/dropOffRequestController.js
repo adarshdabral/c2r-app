@@ -48,7 +48,10 @@ const fireEmail = (promise, ctx) =>
 
 /* ================= CREATE (user) ================= */
 const createHandler = asyncHandler(async (req, res) => {
-  const { storeId, wasteCategory, wasteCategories, wasteQuantity, scheduledDate, timeSlot } = req.body;
+  const {
+    storeId, wasteCategory, wasteCategories, wasteQuantity, scheduledDate, timeSlot,
+    items, sanitizationRequested
+  } = req.body;
 
   const id = await createDropOffRequest({
     userId: req.user.id,
@@ -57,7 +60,9 @@ const createHandler = asyncHandler(async (req, res) => {
     wasteCategories,
     wasteQuantity,
     scheduledDate,
-    timeSlot
+    timeSlot,
+    items,
+    sanitizationRequested
   });
 
   const request = await getRequestById(id);

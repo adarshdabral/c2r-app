@@ -1,10 +1,10 @@
 # Deployment Guide — Connect2Recycle
 
-How this project is built, hosted, and continuously deployed.
+How this project is built, hosted, and deployed.
 
-- **Live app:** http://13.205.147.138/
-- **phpMyAdmin:** http://13.205.147.138/phpmyadmin/
-- **Repo:** `adarshdabral/connect-recycle` (private)
+> **Current setup (2026):** the **backend** deploys to **Render** via `render.yaml` (`rootDir: backend`, `buildCommand: npm install`, `startCommand: npm start`) against an **external MySQL** (Render has no managed MySQL — set the `DB_*` vars, and `DB_SSL=true` for a hosted DB). The **frontend** is an Expo/React Native **mobile app** (Expo Go / native build), **not** a hosted website. The AWS EC2 + nginx + PM2 guide below is the **older** deployment path, kept for reference.
+
+- **Repo:** `adarshdabral/c2r-app`
 
 ---
 

@@ -10,6 +10,8 @@ export const DOMAIN = {
   dropoffs: ["#0ea5b7", "#22b8cf"], // teal — take it to a store
   stores: ["#4f46e5", "#6366f1"], // indigo — discovery / map
   rewards: ["#f59e0b", "#fb923c"], // amber — points
+  drives: ["#7c3aed", "#a855f7"], // violet — community events
+  assistant: ["#0d9488", "#14b8a6"], // teal-green — the helper
 } as const;
 
 export type DomainKey = keyof typeof DOMAIN;

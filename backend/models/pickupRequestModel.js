@@ -2,6 +2,11 @@ const db = require('../config/db');
 const ApiError = require('../utils/ApiError');
 const { normalizeWasteCategories } = require('../utils/wasteCategories');
 const {
+  normalizeSelections,
+  setRequestItems,
+  attachItemsToMany,
+} = require('./ewasteModel');
+const {
   WASTE_TYPES,
   getNearestStores,
   remainingCapacity,
@@ -58,6 +63,9 @@ const mapPickupRow = (row) => {
     // display); `wasteCategories` is the parsed multi-select array.
     wasteCategory: row.waste_category,
     wasteCategories: row.waste_category ? String(row.waste_category).split(',') : [],
+    ...(row.sanitization_requested !== undefined
+      ? { sanitizationRequested: Boolean(row.sanitization_requested) }
+      : {}),
     wasteQuantity: Number(row.waste_quantity),
     pickupAddress: row.pickup_address,
     pickupLatitude: row.pickup_latitude === null ? null : Number(row.pickup_latitude),
@@ -239,11 +247,13 @@ const findEligibleStores = async (
 const createPickupRequest = async (input) => {
   validatePickupPayload(input);
   const categories = normalizeWasteCategories(input, WASTE_TYPES);
+  const selections = await normalizeSelections(input.items);
   const [result] = await db.execute(
     `INSERT INTO pickup_requests
       (user_id, waste_category, waste_quantity, pickup_address,
-       pickup_latitude, pickup_longitude, preferred_time_slot, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'REQUESTED')`,
+       pickup_latitude, pickup_longitude, preferred_time_slot,
+       sanitization_requested, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'REQUESTED')`,
     [
       Number(input.userId),
       categories.join(','),
@@ -251,9 +261,11 @@ const createPickupRequest = async (input) => {
       String(input.pickupAddress).trim(),
       Number(input.pickupLatitude),
       Number(input.pickupLongitude),
-      input.preferredTimeSlot ?? null
+      input.preferredTimeSlot ?? null,
+      input.sanitizationRequested ? 1 : 0
     ]
   );
+  await setRequestItems('pickup', result.insertId, selections);
   return result.insertId;
 };
 
@@ -708,6 +720,7 @@ const REQUEST_SELECT = `
   pr.pickup_latitude, pr.pickup_longitude, pr.preferred_time_slot,
   pr.status, pr.acceptance_deadline, pr.completion_timestamp, pr.broadcast_round,
   pr.user_otp_verified, pr.recycler_otp_verified, pr.actual_quantity_kg,
+  pr.sanitization_requested,
   pr.created_at, pr.updated_at,
   u.name AS user_name, u.email AS user_email,
   r.name AS recycler_name,
@@ -749,6 +762,7 @@ const getRequestById = async (id) => {
     notifiedAt: c.notified_at,
     respondedAt: c.responded_at
   }));
+  await attachItemsToMany('pickup', [request]);
   return request;
 };
 
@@ -772,10 +786,9 @@ const listForUser = async (userId, { status, limit = 10, offset = 0 } = {}) => {
      ORDER BY pr.created_at DESC LIMIT ? OFFSET ?`,
     [...values, limit, offset]
   );
-  return {
-    rows: rows.map((r) => ({ ...mapPickupRow(r), otp: r.otp_user || null })),
-    total
-  };
+  const mapped = rows.map((r) => ({ ...mapPickupRow(r), otp: r.otp_user || null }));
+  await attachItemsToMany('pickup', mapped);
+  return { rows: mapped, total };
 };
 
 /**
@@ -809,7 +822,9 @@ const listForRecycler = async (recyclerId, { scope = 'active' } = {}) => {
       byId.set(mapped.id, mapped);
     }
   }
-  return [...byId.values()];
+  const list = [...byId.values()];
+  await attachItemsToMany('pickup', list);
+  return list;
 };
 
 // Admin: all pickup requests (optional status filter), newest first, paginated.
@@ -830,7 +845,9 @@ const listAllForAdmin = async ({ status, limit = 20, offset = 0 } = {}) => {
      ORDER BY pr.created_at DESC LIMIT ? OFFSET ?`,
     [...values, limit, offset]
   );
-  return { rows: rows.map(mapPickupRow), total };
+  const mapped = rows.map(mapPickupRow);
+  await attachItemsToMany('pickup', mapped);
+  return { rows: mapped, total };
 };
 
 module.exports = {

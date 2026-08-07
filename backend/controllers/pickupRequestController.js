@@ -18,6 +18,7 @@ const {
 } = require('../models/pickupRequestModel');
 const { verifyOtp, getHistory } = require('../models/otpVerificationModel');
 const { awardForCompletion } = require('../services/rewardsService');
+const { generateTransactionReportSafe } = require('../services/reportService');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
@@ -60,7 +61,8 @@ const notifyCandidates = (request, candidates) => {
 const createHandler = asyncHandler(async (req, res) => {
   const {
     wasteCategory, wasteCategories, wasteQuantity, pickupAddress,
-    pickupLatitude, pickupLongitude, preferredTimeSlot
+    pickupLatitude, pickupLongitude, preferredTimeSlot,
+    items, sanitizationRequested
   } = req.body;
 
   const id = await createPickupRequest({
@@ -71,7 +73,9 @@ const createHandler = asyncHandler(async (req, res) => {
     pickupAddress,
     pickupLatitude,
     pickupLongitude,
-    preferredTimeSlot
+    preferredTimeSlot,
+    items,
+    sanitizationRequested
   });
 
   // Round 1 broadcast to the nearest eligible stores.
@@ -166,6 +170,9 @@ const collectHandler = asyncHandler(async (req, res) => {
   // (a no-op when the feature is off / ledger unconfigured; never blocks the
   // response or affects the completion).
   awardForCompletion(request, 'pickup');
+  // Bulk producers get an auto-generated transaction report (best-effort, no-op
+  // for other user types).
+  generateTransactionReportSafe(request);
   return res.status(200).json({ message: 'Pickup completed', request });
 });
 

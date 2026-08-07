@@ -11,7 +11,12 @@ import {
   Navigation,
   PackageCheck,
 } from "lucide-react-native";
-import { api, type WasteType } from "@/lib/api";
+import {
+  api,
+  uploadRequestImages,
+  type WasteType,
+  type RequestItemSelection,
+} from "@/lib/api";
 import { GradientHeader } from "@/components/GradientHeader";
 import { DOMAIN } from "@/lib/domains";
 import {
@@ -21,10 +26,14 @@ import {
   Field,
   Surface,
   Select,
+  Switch,
   LoadingState,
   ErrorState,
   type SelectOption,
 } from "@/components/ui";
+import { CategoryAppliancePicker } from "@/components/booking/CategoryAppliancePicker";
+import { ImageUploader } from "@/components/booking/ImageUploader";
+import { ShieldCheck } from "lucide-react-native";
 import { CategoryMultiSelect } from "@/components/CategoryMultiSelect";
 import { useLocation } from "@/hooks/useLocation";
 
@@ -63,6 +72,9 @@ export default function UserDropoffScreen() {
   const [storeError, setStoreError] = useState("");
 
   const [wasteCategories, setWasteCategories] = useState<WasteType[]>([]);
+  const [itemSelections, setItemSelections] = useState<RequestItemSelection[]>([]);
+  const [sanitizationRequested, setSanitizationRequested] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("");
   const [dateObj, setDateObj] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -146,13 +158,23 @@ export default function UserDropoffScreen() {
     setLoading(true);
     setError("");
     try {
-      await api.post("/dropoff-requests", {
+      const { data } = await api.post("/dropoff-requests", {
         storeId: store.id,
         wasteCategories,
+        items: itemSelections,
+        sanitizationRequested,
         wasteQuantity: q,
         scheduledDate,
         timeSlot,
       });
+      const newId = data?.request?.id;
+      if (newId && photos.length) {
+        try {
+          await uploadRequestImages("dropoff", newId, photos);
+        } catch {
+          /* images are non-critical */
+        }
+      }
       setDone(true);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Could not request drop-off");
@@ -320,6 +342,35 @@ export default function UserDropoffScreen() {
               onChangeText={setQuantity}
             />
           </Field>
+        </Surface>
+
+        {/* Itemize by CPCB category → appliance (optional detail) */}
+        <Surface className="gap-3 p-5">
+          <Text className="text-[15px] font-bold">Itemize your e-waste</Text>
+          <Text className="-mt-1 text-[12.5px] text-muted-foreground">
+            Optional. Pick the categories and appliances you&apos;re dropping off.
+          </Text>
+          <CategoryAppliancePicker value={itemSelections} onChange={setItemSelections} />
+        </Surface>
+
+        {/* Photos */}
+        <Surface className="gap-3 p-5">
+          <Text className="text-[15px] font-bold">Photos</Text>
+          <ImageUploader images={photos} onChange={setPhotos} />
+        </Surface>
+
+        {/* Data sanitization certificate */}
+        <Surface className="flex-row items-center gap-3 p-5">
+          <View className="h-10 w-10 items-center justify-center rounded-2xl bg-accent">
+            <ShieldCheck size={20} color="#1f6b38" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-[14px] font-bold">Data sanitization certificate</Text>
+            <Text className="mt-0.5 text-[12px] text-muted-foreground">
+              Get a certificate confirming your data was securely wiped.
+            </Text>
+          </View>
+          <Switch value={sanitizationRequested} onValueChange={setSanitizationRequested} />
         </Surface>
 
         {/* DATE + TIME SLOT */}

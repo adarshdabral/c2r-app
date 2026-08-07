@@ -9,7 +9,7 @@ Connect2Recycle (**CTR**) is a role-based e-waste recycling platform that connec
 |  Expo Router + NW v4   |                           |  JWT auth, strict MVC    |  (limit 10)    |         |
 +-----------------------+                           +--------------------------+                +---------+
         |                                                    |
-        | react-native-maps (OSM tiles)                      | best-effort, server-side only
+        | Leaflet/OSM in a WebView                           | best-effort, server-side only
         v                                                    v
    Map UI on device                              Rewards ledger (Hyperledger Fabric
                                                  REST bridge, x-api-key) + SMTP email
@@ -50,6 +50,9 @@ routes/  →  controllers/  →  models/  →  config/db.js (mysql2 pool)
 | `addressRoutes.js`          | `addressController.js`         | `addressModel.js`                       | `/api/addresses`         |
 | `disputeRoutes.js`          | `disputeController.js`         | `disputeModel.js`                       | `/api/disputes`          |
 | `rewardRoutes.js`           | `rewardController.js`          | `settingsModel.js` + `services/*`       | `/api/rewards`           |
+| `ewasteRoutes.js`           | `ewasteController.js`         | `ewasteModel.js`                        | `/api/ewaste`            |
+| `imageRoutes.js`            | `requestImageController.js`   | `requestImageModel.js`                  | `/api/images`            |
+| `certificateRoutes.js`      | `certificateController.js`    | `certificateModel.js` + `services/certificateService.js` | `/api/certificates` |
 | `stationRoutes.js`          | `stationController.js`         | `stationModel.js`                       | `/api/stations` (legacy) |
 | `recyclerRoutes.js`         | `recyclerController.js`        | `userModel.js`, `storeModel.js`         | `/api/recyclers`         |
 | `adminRoutes.js`            | `adminController.js`           | (direct `db` + several models)          | `/api/admin`             |
@@ -60,13 +63,13 @@ Cross-cutting utilities (`utils/`): `ApiError` (operational errors + `statusCode
 
 Defined inline in `server.js`'s `createTables()`. **No migration tool** — `CREATE TABLE IF NOT EXISTS` only affects fresh DBs; additive columns use an idempotent `ensureColumn()` helper, and a couple of one-off `ALTER … MODIFY`s run on boot. Plan manual migrations for column changes against an existing DB.
 
-Tables (12):
+Tables (17):
 
 | Table                       | Purpose |
 | --------------------------- | ------- |
 | `users`                     | Accounts. `role ENUM('user','recycler','admin')`; within `user`, a `user_type` (`individual`/`small_business`/`bulk_producer`). OTP + `is_verified` + `is_suspended` + password-reset columns. |
 | `stores`                    | Core entity. A recycler owns many; each has coords, `accepted_waste_types` (MySQL `SET` of the 9 e-waste categories), capacity, `status` (Active/Inactive), `verification_status` (Pending/Verified/Rejected), `rating`/`total_reviews`, admin `daily_threshold_kg`. |
-| `pickup_requests`           | Broadcast/auction requests. `waste_category` holds a **comma-separated list** of categories (multi-select). Status machine + two-sided OTP columns + `actual_quantity_kg`. |
+| `pickup_requests`           | Broadcast/auction requests. `waste_category` holds a **comma-separated list** of categories (multi-select). Status machine + two-sided OTP columns + `actual_quantity_kg` (recycler-verified) + `sanitization_requested`. |
 | `pickup_request_candidates` | The per-round broadcast fan-out (which stores a request was offered to). |
 | `dropoff_requests`          | User picks a specific store + slot; that store's recycler approves. Same multi-category + OTP columns; `recycler_id` denormalised from the store. |
 | `bookings`                  | Original/legacy pickup flow. Still present; targets a `store_id` (nullable legacy `station_id` FK ignored by the create path). |
@@ -76,13 +79,17 @@ Tables (12):
 | `user_addresses`            | A citizen's saved pickup locations (≤1 default per user). |
 | `app_settings`              | Key/value flags. Backs the admin-controlled `rewards_enabled` toggle (default off). |
 | `stations`                  | Legacy admin-managed entity that predates stores; largely unused. |
+| `ewaste_categories` + `ewaste_items` | **Data-driven CPCB taxonomy** (categories → appliances). Seeded once (`seedEwasteTaxonomy`, only when empty); extend by data, not code. |
+| `request_items`             | A booking's selected (category, appliance) pairs — polymorphic over pickup/dropoff, no FK. Additive to `waste_category`. |
+| `request_images`            | Uploaded images as **base64** (`data` LONGTEXT), `uploaded_by` = user \| recycler. Stored in the DB to survive Render's ephemeral FS. |
+| `certificates`              | Data Sanitization Certificate per request — form fields + the generated **PDF as base64** (`pdf_data`), `verification_id`, one per request. |
 
 Migration scripts: `scripts/migrate-waste-categories.sql` (switch the `stores.accepted_waste_types` SET members to the 9 e-waste categories — **must be run once on an existing DB**) and `scripts/migrateRecyclersToStores.js` (backfill a default store per legacy recycler, idempotent).
 
 ### 1.4 Auth model
 
 - **Registration is OTP-gated.** `register` creates the account and emails a 6-digit OTP; `verifyOTP` sets `is_verified`; `resendOTP` reissues. `admin` cannot self-register.
-- **Login** refuses unverified (`is_verified`) or `is_suspended` accounts. It returns the JWT in the JSON body **and** sets an `httpOnly` `token` cookie (the mobile client uses the body/localStorage token; the cookie is for parity).
+- **Login** refuses unverified (`is_verified`) or `is_suspended` accounts. It returns the JWT in the JSON body **and** sets an `httpOnly` `token` cookie (the mobile client stores the body token in `expo-secure-store` and sends it as a Bearer header; the cookie is for parity).
 - **`protect`** reads the JWT from `Authorization: Bearer …` or the `token=` cookie, verifies with `JWT_SECRET`, sets `req.user = { id, role }`.
 - **`requireRole(...roles)`** is composed after `protect` on gated routes.
 - **Rate limit** — `express-rate-limit` on `/api/auth/*` only, **skipped when `NODE_ENV` is `development` or `test`** (so tests aren't throttled).
@@ -115,11 +122,16 @@ An **opt-in** feature (admin toggle `app_settings.rewards_enabled`, default **of
 | GET/PUT| `/api/auth/profile`                    | any role        | `{ name, email, role, user_type }` |
 | GET    | `/api/stores/nearest`                  | any role        | `?lat=&lng=` (+ filters) |
 | GET    | `/api/stores/:id` · `/:id/reviews`     | any role        | Detail + reviews |
-| POST   | `/api/pickup-requests`                 | user            | Multi-category; auto-broadcast |
+| POST   | `/api/pickup-requests`                 | user            | Multi-category + `items` (appliances) + `sanitizationRequested`; auto-broadcast |
 | GET    | `/api/pickup-requests/mine` · `/inbox` | user · recycler | Owner view / recycler inbox |
 | POST   | `/api/pickup-requests/:id/accept` · `/collect` | recycler | Accept / OTP-complete |
 | POST   | `/api/dropoff-requests` · `/:id/approve` · `/collect` | user · recycler | Create / approve / complete |
 | GET    | `/api/rewards/status` · `/me` · `/me/history` | user     | Feature flag / balance / on-chain trail |
+| GET    | `/api/ewaste/categories`               | any role        | Data-driven CPCB category → appliance taxonomy |
+| GET/POST/DELETE | `/api/images/:type/:id`       | user · recycler | Base64 image sets (user + recycler), role-gated |
+| POST   | `/api/certificates/:type/:id`          | recycler        | Generate the sanitization PDF (stored base64) |
+| GET    | `/api/certificates/:type/:id` · `/download` | user · recycler · admin | Metadata / stream the PDF |
+| GET    | `/api/certificates/verify/:id`         | public          | QR / verification-id lookup |
 | GET/PATCH | `/api/admin/overview` · `/settings` · `/settings/rewards` · `/users` · `/stores` · `/disputes` | admin | Overview, feature flags, moderation |
 
 ### 1.9 Environment
@@ -130,7 +142,7 @@ An **opt-in** feature (admin toggle `app_settings.rewards_enabled`, default **of
 
 ## 2. Frontend — `frontend/`
 
-Expo SDK 54 + Expo Router 6 + React Native 0.81 + React 19 + TypeScript. Styling: **NativeWind v4** (Tailwind classes in RN; CSS-variable theme in `global.css` + `tailwind.config.js`). Animation: **react-native-reanimated 4** + `react-native-svg` + `expo-linear-gradient`. Maps: **react-native-maps** (works in Expo Go). Also `axios`, `zod`, `react-hook-form`, `date-fns`, `expo-location`, `expo-secure-store`, `@react-native-async-storage/async-storage`, `lucide-react-native`, `@expo-google-fonts/fraunces`.
+Expo SDK 54 + Expo Router 6 + React Native 0.81 + React 19 + TypeScript. Styling: **NativeWind v4** (Tailwind classes in RN; CSS-variable theme in `global.css` + `tailwind.config.js`). Animation: **react-native-reanimated 4** + `react-native-svg` + `expo-linear-gradient`. Maps: **Leaflet/OpenStreetMap inside `react-native-webview`** (`src/components/map/LeafletMap.tsx`, Leaflet inlined in `leaflet-inline.ts`, Carto tiles) — no API key, works on Android + iOS in Expo Go (react-native-maps was blank on Android). Also `axios`, `zod`, `react-hook-form`, `date-fns`, `expo-location`, `expo-secure-store`, `@react-native-async-storage/async-storage`, `lucide-react-native`, `@expo-google-fonts/fraunces`.
 
 ### 2.1 Route layout (role-routed)
 
@@ -168,6 +180,7 @@ Token → `expo-secure-store`; role/user_type → AsyncStorage. `EXPO_PUBLIC_API
 
 - **Notifications** (`src/lib/notifications.ts` + `app/(user)/notifications.tsx`) — a client-synthesized feed from the user's own pickups/drop-offs, surfacing status updates and the owner's handover OTPs (no new OTP exposure). A dashboard bell shows an unread badge (last-seen in AsyncStorage).
 - **Onboarding tours** (`src/lib/tutorials.ts` + `TutorialLauncher`) — per role/user-type walkthroughs that auto-show once on first login.
+- **Booking extras** (`src/components/booking/`): `CategoryAppliancePicker` (data-driven CPCB category → appliance accordion), `ImageUploader` (library/camera, previews; `src/lib/imagePicker.ts`), and `BookingDetails` — one shared block reused on the user (`pickups`, `dropoff/mine`) and recycler (`pickups`, `dropoffs`) screens: itemised categories, declared-vs-verified quantity + "mismatch" badge, both image galleries + upload, and the certificate (user: view/download the PDF via `expo-file-system`/`expo-sharing`; recycler: generate form). New deps: `expo-image-picker`, `expo-file-system`, `expo-sharing`.
 
 ### 2.5 Build & types
 
@@ -188,9 +201,9 @@ Token → `expo-secure-store`; role/user_type → AsyncStorage. `EXPO_PUBLIC_API
 
 ## 4. Deployment
 
-- **CI/CD** (`.github/workflows/ci-cd.yml`) — on push/PR to `main`: frontend (vitest + build check), backend (`node --check` sweep + coverage), backend-integration (supertest vs a `mysql:8.4` service). On push to `main`, after all pass, an SSH deploy to EC2 runs `scripts/deploy.sh`.
+- **CI** — no `.github/workflows` is committed currently. Run the gates locally: frontend `npx tsc --noEmit` + `npx expo export`; backend `npm run test:coverage` + `npm run test:integration`. (`scripts/deploy.sh` + EC2 SSH are the older deploy path.)
 - **Backend on Render** (`render.yaml`) — a `web` service with `rootDir: backend`, `buildCommand: npm install`, `startCommand: npm start`; binds `process.env.PORT`. Render has **no managed MySQL**, so `DB_*` must point at an external MySQL (PlanetScale/Aiven/Railway/RDS); the server runs `createTables()` on boot and won't start without a reachable DB.
-- **Frontend** — a mobile app: run in **Expo Go** (`npm start`) or a native/EAS build. It is **not** a web service (react-native-maps has no web support).
+- **Frontend** — a mobile app: run in **Expo Go** (`npm start`) or a native/EAS build. It is **not** a web service (the WebView map + native modules don't function in a browser).
 
 ---
 

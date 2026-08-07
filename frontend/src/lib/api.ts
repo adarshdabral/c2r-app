@@ -100,6 +100,179 @@ export type LoginResponse = {
   name: string;
 };
 
+/* ============================== E-WASTE TAXONOMY / IMAGES / CERTIFICATES ============================== */
+
+export type EwasteItem = { id: number; name: string };
+export type EwasteCategory = { id: number; name: string; code: string | null; items: EwasteItem[] };
+
+// What the booking screens send: selected appliance ids per category.
+export type RequestItemSelection = { categoryId: number; itemIds: number[] };
+// What request detail/list responses return: appliances grouped by category.
+export type RequestItemGroup = { categoryId: number; categoryName: string; items: EwasteItem[] };
+
+export type RequestImage = { id: number; dataUrl: string; createdAt: string };
+export type RequestImages = { user: RequestImage[]; recycler: RequestImage[] };
+
+export type RequestKind = "pickup" | "dropoff";
+
+export type Certificate = {
+  id: number;
+  requestType: RequestKind;
+  requestId: number;
+  certificateNo: string;
+  verificationId: string;
+  sanitizationMethod: string;
+  sanitizedOn: string;
+  authorisedPerson: string;
+  designation: string | null;
+  issuedAt: string;
+};
+
+export type CertificateForm = {
+  sanitizationMethod: string;
+  sanitizedOn: string; // YYYY-MM-DD
+  authorisedPerson: string;
+  designation?: string;
+};
+
+// ── typed clients for the new endpoints ──
+export const getEwasteCategories = () =>
+  api.get<{ categories: EwasteCategory[] }>("/ewaste/categories").then((r) => r.data.categories);
+
+export const getRequestImages = (type: RequestKind, id: number) =>
+  api.get<RequestImages>(`/images/${type}/${id}`).then((r) => r.data);
+
+// `images` are data URLs (or raw base64).
+export const uploadRequestImages = (type: RequestKind, id: number, images: string[]) =>
+  api.post<RequestImages>(`/images/${type}/${id}`, { images }).then((r) => r.data);
+
+export const deleteRequestImage = (type: RequestKind, id: number, imageId: number) =>
+  api.delete<RequestImages>(`/images/${type}/${id}/${imageId}`).then((r) => r.data);
+
+export const getCertificate = (type: RequestKind, id: number) =>
+  api.get<{ certificate: Certificate | null }>(`/certificates/${type}/${id}`).then((r) => r.data.certificate);
+
+export const generateCertificate = (type: RequestKind, id: number, form: CertificateForm) =>
+  api.post<Certificate>(`/certificates/${type}/${id}`, form).then((r) => r.data);
+
+// Absolute URL for the PDF (the caller adds the auth header / fetches it).
+export const certificateDownloadPath = (type: RequestKind, id: number) =>
+  `/certificates/${type}/${id}/download`;
+
+/* ============================== COLLECTION DRIVES (events) ============================== */
+
+export type DriveStatus = "UPCOMING" | "ONGOING" | "COMPLETED" | "CANCELLED";
+
+export type CollectionDrive = {
+  id: number;
+  hostId: number;
+  hostRole: "recycler" | "admin";
+  hostName?: string;
+  title: string;
+  description: string | null;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  scheduledDate: string; // YYYY-MM-DD
+  timeWindow: string | null;
+  acceptedCategories: string[];
+  capacity: number | null;
+  status: DriveStatus;
+  goingCount?: number;
+  myRsvp?: "GOING" | "CANCELLED" | null;
+  distanceKm?: number;
+  createdAt: string;
+};
+
+export type DriveAttendee = { userId: number; name: string; email: string; rsvpAt: string };
+
+export type DriveInput = {
+  title: string;
+  description?: string;
+  address: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  scheduledDate: string;
+  timeWindow?: string;
+  acceptedCategories?: string[];
+  capacity?: number | null;
+};
+
+export const getDrives = (params?: { status?: string; lat?: number; lng?: number }) =>
+  api.get<{ drives: CollectionDrive[] }>("/collection-drives", { params }).then((r) => r.data.drives);
+
+export const getDrive = (id: number) =>
+  api.get<CollectionDrive>(`/collection-drives/${id}`).then((r) => r.data);
+
+export const rsvpDrive = (id: number) =>
+  api.post<CollectionDrive>(`/collection-drives/${id}/rsvp`).then((r) => r.data);
+
+export const cancelDriveRsvp = (id: number) =>
+  api.delete<CollectionDrive>(`/collection-drives/${id}/rsvp`).then((r) => r.data);
+
+export const getMyDrives = () =>
+  api.get<{ drives: CollectionDrive[] }>("/collection-drives/mine").then((r) => r.data.drives);
+
+export const getHostingDrives = () =>
+  api.get<{ drives: CollectionDrive[] }>("/collection-drives/hosting").then((r) => r.data.drives);
+
+export const createDrive = (input: DriveInput) =>
+  api.post<{ drive: CollectionDrive }>("/collection-drives", input).then((r) => r.data.drive);
+
+export const setDriveStatus = (id: number, status: DriveStatus) =>
+  api.patch<CollectionDrive>(`/collection-drives/${id}/status`, { status }).then((r) => r.data);
+
+export const getDriveAttendees = (id: number) =>
+  api.get<{ attendees: DriveAttendee[] }>(`/collection-drives/${id}/attendees`).then((r) => r.data.attendees);
+
+export const regenerateDriveReport = (id: number) =>
+  api.post(`/collection-drives/${id}/report`).then((r) => r.data);
+
+// Path for the report file (host adds auth header / fetches it). format: pdf | xls
+export const driveReportDownloadPath = (id: number, format: "pdf" | "xls") =>
+  `/collection-drives/${id}/report/download?format=${format}`;
+
+/* ============================== IMPACT REPORTS (bulk producer) ============================== */
+
+export type ReportType = "transaction" | "monthly" | "quarterly" | "annual";
+
+export type ReportMetrics = {
+  quantityKg: number;
+  co2AvoidedKg: number;
+  treesEquivalent: number;
+  energySavedKwh: number;
+  waterSavedLiters: number;
+  landfillDivertedKg: number;
+};
+
+export type ImpactReport = {
+  id: number;
+  userId: number;
+  reportType: ReportType;
+  reportNo: string;
+  pickupId: number | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  title: string;
+  totalQuantityKg: number;
+  totalPickups: number;
+  metrics: ReportMetrics | null;
+  insights: string[];
+  createdAt: string;
+  userName?: string;
+};
+
+export const getReports = () =>
+  api.get<{ reports: ImpactReport[] }>("/reports").then((r) => r.data.reports);
+
+export const generateReportSummary = (type: "monthly" | "quarterly" | "annual") =>
+  api.post<{ report: ImpactReport }>("/reports/summary", { type }).then((r) => r.data.report);
+
+export const getReport = (id: number) =>
+  api.get<{ report: ImpactReport }>(`/reports/${id}`).then((r) => r.data.report);
+
+export const reportDownloadPath = (id: number) => `/reports/${id}/download`;
+
 /* ============================== REWARDS (blockchain ledger) ============================== */
 
 // Whether the admin-controlled rewards feature is live (GET /api/rewards/status).
@@ -265,6 +438,9 @@ export type PickupRequest = {
   // Comma-joined list of categories (for display); `wasteCategories` is the array.
   wasteCategory: string;
   wasteCategories?: WasteType[];
+  // Multi-category CPCB selection (category → appliances) + certificate request.
+  items?: RequestItemGroup[];
+  sanitizationRequested?: boolean;
   wasteQuantity: number;
   pickupAddress: string;
   pickupLatitude: number;
@@ -317,6 +493,9 @@ export type DropOffRequest = {
   // Comma-joined list of categories (for display); `wasteCategories` is the array.
   wasteCategory: string;
   wasteCategories?: WasteType[];
+  // Multi-category CPCB selection (category → appliances) + certificate request.
+  items?: RequestItemGroup[];
+  sanitizationRequested?: boolean;
   wasteQuantity: number;
   scheduledDate: string;
   timeSlot: string;
@@ -435,3 +614,110 @@ export type Booking = {
   latitude: number;
   longitude: number;
 };
+
+/* ============================== WEBSITE CONTENT CMS ============================== */
+
+// The backend returns media as `/api/...` paths; resolve them against the API
+// origin so <Image>/<Video> can load them directly (public, no auth needed).
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+export const absoluteMediaUrl = (path?: string | null) =>
+  path ? `${API_ORIGIN}${path}` : null;
+
+export type SiteCollection = "carousel" | "faq_gallery";
+export type SiteSettingKey =
+  | "hero_video"
+  | "impact_image"
+  | "hero_heading"
+  | "hero_subheading";
+
+export type SiteSetting = {
+  text: string | null;
+  hasMedia: boolean;
+  mediaType: string | null;
+  mediaUrl: string | null;
+  updatedAt: string;
+};
+
+export type SiteMediaItem = {
+  id: number;
+  collection: SiteCollection;
+  title: string | null;
+  body: string | null;
+  hasMedia: boolean;
+  mediaType: string | null;
+  mediaUrl?: string | null;
+  linkUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type SiteContent = {
+  settings: Partial<Record<SiteSettingKey, SiteSetting>>;
+  carousel: SiteMediaItem[];
+  faqGallery: SiteMediaItem[];
+};
+
+// Public read — the whole published surface in one call.
+export const getSiteContent = () =>
+  api.get<SiteContent>("/site-content").then((r) => r.data);
+
+// Admin: upsert a singleton (hero heading/subheading, impact image, hero video).
+// `media` is a data URL (base64) or { data, mimeType }.
+export const putSiteSetting = (
+  key: SiteSettingKey,
+  payload: { text?: string; media?: string }
+) =>
+  api
+    .put<{ setting: { key: string } & SiteSetting }>(`/site-content/settings/${key}`, payload)
+    .then((r) => r.data.setting);
+
+// Admin: full list of a collection (includes inactive items).
+export const getSiteItemsAdmin = (collection: SiteCollection) =>
+  api
+    .get<{ items: SiteMediaItem[] }>(`/site-content/admin/items/${collection}`)
+    .then((r) => r.data.items);
+
+export const createSiteItem = (
+  collection: SiteCollection,
+  payload: { title?: string; body?: string; media?: string; linkUrl?: string; sortOrder?: number; isActive?: boolean }
+) =>
+  api
+    .post<{ item: SiteMediaItem }>(`/site-content/admin/items/${collection}`, payload)
+    .then((r) => r.data.item);
+
+export const updateSiteItem = (
+  id: number,
+  payload: Partial<{ title: string; body: string; media: string; linkUrl: string; sortOrder: number; isActive: boolean }>
+) =>
+  api
+    .patch<{ item: SiteMediaItem }>(`/site-content/admin/items/${id}`, payload)
+    .then((r) => r.data.item);
+
+export const deleteSiteItem = (id: number) =>
+  api.delete(`/site-content/admin/items/${id}`).then((r) => r.data);
+
+// Admin item media is served on a stable path; append a cache-buster after edits.
+export const siteItemMediaUrl = (id: number, v?: number | string) =>
+  absoluteMediaUrl(`/api/site-content/items/${id}/media${v !== undefined ? `?v=${v}` : ""}`);
+
+/* ============================== ASSISTANT (rule/intent engine) ============================== */
+
+export type AssistantAction = { label: string; href: string } | null;
+
+export type AssistantReply = {
+  intent: string;
+  reply: string;
+  suggestions: string[];
+  action: AssistantAction;
+};
+
+export type AssistantIntro = { greeting: string; suggestions: string[] };
+
+// Starter greeting + role-aware suggested prompts.
+export const getAssistantIntro = () =>
+  api.get<AssistantIntro>("/assistant/suggestions").then((r) => r.data);
+
+// Ask the assistant a question. Returns a canned/templated reply + follow-ups.
+export const assistantQuery = (message: string) =>
+  api.post<AssistantReply>("/assistant/query", { message }).then((r) => r.data);

@@ -18,6 +18,13 @@ const addressRoutes = require('./routes/addressRoutes');
 const recyclerRoutes = require('./routes/recyclerRoutes');
 const disputeRoutes = require('./routes/disputeRoutes');
 const rewardRoutes = require('./routes/rewardRoutes');
+const ewasteRoutes = require('./routes/ewasteRoutes');
+const imageRoutes = require('./routes/imageRoutes');
+const certificateRoutes = require('./routes/certificateRoutes');
+const collectionDriveRoutes = require('./routes/collectionDriveRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const siteContentRoutes = require('./routes/siteContentRoutes');
+const assistantRoutes = require('./routes/assistantRoutes');
 const adminRoutes = require("./routes/adminRoutes");
 
 
@@ -32,7 +39,8 @@ app.use(cors({
 }));
 
 // Body parser
-app.use(express.json());
+// 25MB accommodates base64 image uploads (stored in MySQL); default is 100KB.
+app.use(express.json({ limit: '25mb' }));
 
 // Structured per-request logging
 app.use(requestLogger);
@@ -60,6 +68,13 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/recyclers', recyclerRoutes);
 app.use('/api/disputes', disputeRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/ewaste', ewasteRoutes);
+app.use('/api/images', imageRoutes);
+app.use('/api/certificates', certificateRoutes);
+app.use('/api/collection-drives', collectionDriveRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/site-content', siteContentRoutes);
+app.use('/api/assistant', assistantRoutes);
 app.use("/api/admin", adminRoutes);
 
 /* ----------------------- 404 HANDLER ----------------------- */
@@ -87,6 +102,41 @@ app.use((err, req, res, next) => {
 });
 
 /* ----------------------- DATABASE SETUP ----------------------- */
+
+// CPCB-aligned e-waste taxonomy seed. Data-driven: extend by editing this list
+// (or via the DB) — no code changes elsewhere are needed. Seeded once, only when
+// the categories table is empty, so admin/data edits are never overwritten.
+const EWASTE_TAXONOMY = [
+  { name: 'IT & Telecommunication Equipment', code: 'ITEW', items: ['Laptop', 'Desktop Computer', 'Monitor', 'Keyboard', 'Mouse', 'Printer', 'Scanner', 'Router', 'Modem', 'Server', 'Mobile Phone', 'Tablet', 'Landline Phone', 'UPS'] },
+  { name: 'Large Household Appliances', code: 'LHA', items: ['Refrigerator', 'Washing Machine', 'Air Conditioner', 'Microwave Oven', 'Dishwasher', 'Water Heater / Geyser'] },
+  { name: 'Small Household Appliances', code: 'SHA', items: ['Iron', 'Toaster', 'Mixer / Grinder', 'Vacuum Cleaner', 'Electric Kettle', 'Hair Dryer'] },
+  { name: 'Consumer Electronics', code: 'CE', items: ['Television', 'Radio', 'DVD / Blu-ray Player', 'Camera', 'Speakers', 'Set-top Box', 'Gaming Console'] },
+  { name: 'Lighting Equipment', code: 'LE', items: ['LED Bulb', 'CFL', 'Tube Light', 'Fluorescent Lamp'] },
+  { name: 'Electrical & Electronic Tools', code: 'EET', items: ['Power Drill', 'Electric Saw', 'Soldering Iron', 'Sewing Machine'] },
+  { name: 'Batteries & Accessories', code: 'BAT', items: ['Lithium-ion Battery', 'Lead-acid Battery', 'Power Bank', 'Charger', 'Cables & Wires'] },
+  { name: 'Medical Devices', code: 'MED', items: ['Digital Thermometer', 'BP Monitor', 'Glucometer'] },
+  { name: 'Monitoring & Control Instruments', code: 'MCI', items: ['Smoke Detector', 'Thermostat', 'Sensors'] },
+];
+
+const seedEwasteTaxonomy = async () => {
+  const [[{ n }]] = await db.query('SELECT COUNT(*) AS n FROM ewaste_categories');
+  if (n > 0) return; // already seeded / admin-managed
+  for (let ci = 0; ci < EWASTE_TAXONOMY.length; ci++) {
+    const cat = EWASTE_TAXONOMY[ci];
+    const [res] = await db.execute(
+      'INSERT INTO ewaste_categories (name, code, sort_order) VALUES (?, ?, ?)',
+      [cat.name, cat.code, ci]
+    );
+    const categoryId = res.insertId;
+    for (let ii = 0; ii < cat.items.length; ii++) {
+      await db.execute(
+        'INSERT INTO ewaste_items (category_id, name, sort_order) VALUES (?, ?, ?)',
+        [categoryId, cat.items[ii], ii]
+      );
+    }
+  }
+  console.log(`✅ Seeded ${EWASTE_TAXONOMY.length} e-waste categories`);
+};
 
 const createTables = async () => {
   // USERS
@@ -358,6 +408,8 @@ const createTables = async () => {
     // of e-waste categories, so widen it from the original VARCHAR(32). MODIFY is
     // idempotent — safe to run on every boot.
     await db.execute(`ALTER TABLE ${table} MODIFY COLUMN waste_category VARCHAR(255) NOT NULL`);
+    // Data Sanitization Certificate: whether the user asked for one at booking.
+    await ensureColumn(table, 'sanitization_requested', 'BOOLEAN NOT NULL DEFAULT FALSE');
   }
 
   // Admin-controlled per-store daily intake threshold (kg). NULL = no limit.
@@ -480,6 +532,200 @@ const createTables = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
+
+  // ── CPCB e-waste taxonomy (data-driven) ──────────────────────────────────
+  // Categories and the appliances/items under each. Adding future CPCB
+  // categories/items is a data update (seed / admin), never a code change.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS ewaste_categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(120) NOT NULL UNIQUE,
+      code VARCHAR(32) NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE
+    )
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS ewaste_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      category_id INT NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      FOREIGN KEY (category_id) REFERENCES ewaste_categories(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_item (category_id, name),
+      INDEX idx_item_category (category_id)
+    )
+  `);
+
+  // Selected (category, appliance) pairs per request — polymorphic over pickup/
+  // dropoff (no FK on request_id, matching the OTP-log pattern). item_id NULL
+  // means the whole category was selected without a specific appliance.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS request_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      request_type ENUM('pickup', 'dropoff') NOT NULL,
+      request_id INT NOT NULL,
+      category_id INT NOT NULL,
+      item_id INT NULL,
+      category_name VARCHAR(120) NOT NULL,
+      item_name VARCHAR(120) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_reqitem (request_type, request_id)
+    )
+  `);
+
+  // Uploaded images (base64), kept in the DB so they survive Render redeploys.
+  // uploaded_by separates the user's before-images from the recycler's
+  // collected-waste images.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS request_images (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      request_type ENUM('pickup', 'dropoff') NOT NULL,
+      request_id INT NOT NULL,
+      uploaded_by ENUM('user', 'recycler') NOT NULL,
+      uploader_id INT NULL,
+      mime_type VARCHAR(40) NOT NULL DEFAULT 'image/jpeg',
+      data LONGTEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_reqimg (request_type, request_id, uploaded_by)
+    )
+  `);
+
+  // Data Sanitization Certificates — one per request, issued by the recycler.
+  // The generated PDF is stored as base64 (pdf_data) so it's permanently linked
+  // to the booking regardless of the deploy filesystem.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS certificates (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      request_type ENUM('pickup', 'dropoff') NOT NULL,
+      request_id INT NOT NULL,
+      certificate_no VARCHAR(40) NOT NULL UNIQUE,
+      verification_id VARCHAR(64) NOT NULL UNIQUE,
+      recycler_id INT NULL,
+      sanitization_method VARCHAR(120) NOT NULL,
+      sanitized_on DATE NOT NULL,
+      authorised_person VARCHAR(120) NOT NULL,
+      designation VARCHAR(120) NULL,
+      pdf_data LONGTEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_cert_request (request_type, request_id)
+    )
+  `);
+
+  // ── Collection drives (public e-waste events) + RSVPs ────────────────────
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS collection_drives (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      host_id INT NOT NULL,
+      host_role ENUM('recycler', 'admin') NOT NULL,
+      title VARCHAR(150) NOT NULL,
+      description TEXT NULL,
+      address VARCHAR(255) NOT NULL,
+      latitude DECIMAL(10, 7) NULL,
+      longitude DECIMAL(10, 7) NULL,
+      scheduled_date DATE NOT NULL,
+      time_window VARCHAR(60) NULL,
+      accepted_categories VARCHAR(255) NULL,
+      capacity INT NULL,
+      status ENUM('UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED') NOT NULL DEFAULT 'UPCOMING',
+      reminder_sent BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_drive_host (host_id),
+      INDEX idx_drive_status (status, scheduled_date)
+    )
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS collection_drive_rsvps (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      drive_id INT NOT NULL,
+      user_id INT NOT NULL,
+      status ENUM('GOING', 'CANCELLED') NOT NULL DEFAULT 'GOING',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_rsvp_drive FOREIGN KEY (drive_id) REFERENCES collection_drives(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_rsvp (drive_id, user_id),
+      INDEX idx_rsvp_user (user_id)
+    )
+  `);
+
+  // Drive completion report — PDF + Excel (both base64), one per drive.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS collection_drive_reports (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      drive_id INT NOT NULL,
+      report_no VARCHAR(40) NOT NULL UNIQUE,
+      generated_by INT NULL,
+      attendee_count INT NOT NULL DEFAULT 0,
+      pdf_data LONGTEXT NOT NULL,
+      xls_data LONGTEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (drive_id) REFERENCES collection_drives(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_drive_report (drive_id)
+    )
+  `);
+
+  // Bulk-producer analytics reports (transaction + period summaries). PDF base64.
+  // pickup_id is UNIQUE so a transaction report is generated once per pickup;
+  // summaries have pickup_id NULL (MySQL allows many NULLs in a UNIQUE index).
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      report_type ENUM('transaction', 'monthly', 'quarterly', 'annual') NOT NULL,
+      report_no VARCHAR(40) NOT NULL UNIQUE,
+      pickup_id INT NULL,
+      period_start DATE NULL,
+      period_end DATE NULL,
+      title VARCHAR(160) NOT NULL,
+      total_quantity_kg DECIMAL(12, 2) NOT NULL DEFAULT 0,
+      total_pickups INT NOT NULL DEFAULT 0,
+      metrics JSON NULL,
+      insights JSON NULL,
+      pdf_data LONGTEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_report_user (user_id, created_at),
+      UNIQUE KEY uq_report_pickup (pickup_id)
+    )
+  `);
+
+  // ---- Website content CMS (admin-managed marketing/home content) ----
+  // Singletons: hero_video, impact_image, hero_heading, hero_subheading, etc.
+  // Media is stored base64 (Render's filesystem is ephemeral) in media_data.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS site_settings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      setting_key VARCHAR(60) NOT NULL UNIQUE,
+      text_value TEXT NULL,
+      media_data LONGTEXT NULL,
+      media_type VARCHAR(60) NULL,
+      updated_by INT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Ordered collections: carousel images, FAQ-gallery images. Each item is an
+  // image (media_data base64) with an optional caption; FAQ items may also carry
+  // a question/answer in title/body.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS site_media_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      collection ENUM('carousel', 'faq_gallery') NOT NULL,
+      title VARCHAR(200) NULL,
+      body TEXT NULL,
+      media_data LONGTEXT NULL,
+      media_type VARCHAR(60) NULL,
+      link_url VARCHAR(500) NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_site_media_collection (collection, sort_order)
+    )
+  `);
+
+  await seedEwasteTaxonomy();
 
   console.log("✅ Tables ensured");
 };

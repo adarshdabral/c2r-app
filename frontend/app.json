@@ -46,6 +46,13 @@
           "locationWhenInUsePermission": "Connect2Recycle uses your location to find recycling stores near you and set pickup addresses."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Connect2Recycle uses your photos so you can attach images of your e-waste.",
+          "cameraPermission": "Connect2Recycle uses your camera to photograph e-waste for a booking."
+        }
+      ],
       "expo-font"
     ],
     "experiments": {

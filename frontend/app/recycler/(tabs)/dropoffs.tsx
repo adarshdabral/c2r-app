@@ -26,6 +26,7 @@ import {
   OtpInput,
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BookingDetails } from "@/components/booking/BookingDetails";
 
 // Statuses still needing recycler action (drive the "active" grouping).
 const ACTIVE_STATUSES: DropOffStatus[] = [
@@ -209,6 +210,16 @@ export default function RecyclerDropoffsScreen() {
                       onSubmit={() => collect(r.id)}
                     />
                   ) : null}
+                  <BookingDetails
+                    type="dropoff"
+                    id={r.id}
+                    role="recycler"
+                    declaredQty={r.wasteQuantity}
+                    verifiedQty={r.actualQuantityKg}
+                    items={r.items}
+                    sanitizationRequested={r.sanitizationRequested}
+                    onChange={load}
+                  />
                 </Surface>
               ))
             )}
@@ -223,6 +234,16 @@ export default function RecyclerDropoffsScreen() {
               {history.map((r) => (
                 <Surface key={r.id} className="p-4">
                   <Summary r={r} compact />
+                  <BookingDetails
+                    type="dropoff"
+                    id={r.id}
+                    role="recycler"
+                    declaredQty={r.wasteQuantity}
+                    verifiedQty={r.actualQuantityKg}
+                    items={r.items}
+                    sanitizationRequested={r.sanitizationRequested}
+                    onChange={load}
+                  />
                 </Surface>
               ))}
             </View>

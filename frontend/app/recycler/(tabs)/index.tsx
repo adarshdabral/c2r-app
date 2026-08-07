@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
   Bell,
+  CalendarHeart,
   CheckCircle,
   ChevronRight,
   Clock,
@@ -199,6 +200,20 @@ export default function RecyclerDashboardScreen() {
 
       {/* Guided tour of the recycler console (auto-shows once on first login). */}
       <TutorialLauncher tutorialKey="recycler" className="mt-5" />
+
+      {/* Host collection drives */}
+      <Pressable onPress={() => router.push("/recycler/drives" as any)} className="mt-4 active:opacity-80">
+        <Surface className="flex-row items-center gap-3 p-4">
+          <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#7c3aed]/[0.12]">
+            <CalendarHeart size={22} color="#7c3aed" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-[14px] font-bold">Collection drives</Text>
+            <Text className="mt-0.5 text-[12px] text-muted-foreground">Host public e-waste events and manage RSVPs.</Text>
+          </View>
+          <ChevronRight size={20} color="#6c7278" />
+        </Surface>
+      </Pressable>
 
       {/* New-request highlight */}
       {unseen.length > 0 ? (

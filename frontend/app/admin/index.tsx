@@ -6,6 +6,7 @@ import {
   Ban,
   CheckCircle,
   LayoutDashboard,
+  LayoutTemplate,
   LogOut,
   PackageCheck,
   Recycle,
@@ -47,6 +48,7 @@ import {
   EmptyState,
   type SelectOption,
 } from "@/components/ui";
+import { ContentSection } from "@/features/admin-content";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -60,7 +62,7 @@ import {
 /* MySQL tinyint/bool coercion — matches the web page's `bool()` helper. */
 const bool = (v: unknown) => v === true || v === 1;
 
-type Tab = "overview" | "stores" | "users" | "requests" | "disputes" | "settings";
+type Tab = "overview" | "stores" | "users" | "requests" | "disputes" | "content" | "settings";
 
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
@@ -68,6 +70,7 @@ const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "users", label: "Users", icon: Users },
   { key: "requests", label: "Requests", icon: Truck },
   { key: "disputes", label: "Disputes", icon: Scale },
+  { key: "content", label: "Content", icon: LayoutTemplate },
   { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -142,6 +145,7 @@ export default function AdminDashboardScreen() {
         {tab === "users" && <UsersSection />}
         {tab === "requests" && <RequestsSection />}
         {tab === "disputes" && <DisputesSection />}
+        {tab === "content" && <ContentSection />}
         {tab === "settings" && <SettingsSection />}
       </View>
     </SafeAreaView>

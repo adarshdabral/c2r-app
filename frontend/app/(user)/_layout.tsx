@@ -26,6 +26,9 @@ export default function UserLayout() {
       <Stack.Screen name="booking" options={{ headerShown: true, title: "Book a Pickup" }} />
       <Stack.Screen name="rewards" options={{ headerShown: true, title: "My Rewards" }} />
       <Stack.Screen name="notifications" options={{ headerShown: true, title: "Notifications" }} />
+      <Stack.Screen name="drives" options={{ headerShown: false }} />
+      <Stack.Screen name="reports" options={{ headerShown: false }} />
+      <Stack.Screen name="assistant" options={{ headerShown: false }} />
     </Stack>
   );
 }

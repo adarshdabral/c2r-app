@@ -28,6 +28,7 @@ import {
   OtpInput,
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BookingDetails } from "@/components/booking/BookingDetails";
 
 const PICKUP_LABELS: Record<PickupStatus, string> = {
   REQUESTED: "Requested",
@@ -258,6 +259,16 @@ export default function RecyclerPickupsScreen() {
                       Accepted — awaiting collection.
                     </Text>
                   )}
+                  <BookingDetails
+                    type="pickup"
+                    id={r.id}
+                    role="recycler"
+                    declaredQty={r.wasteQuantity}
+                    verifiedQty={r.actualQuantityKg}
+                    items={r.items}
+                    sanitizationRequested={r.sanitizationRequested}
+                    onChange={load}
+                  />
                 </Surface>
               ))
             )}

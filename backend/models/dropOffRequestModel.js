@@ -9,6 +9,11 @@ const {
   isWithinThreshold
 } = require('./storeModel');
 const { armVerification, logAttempt, MAX_OTP_ATTEMPTS } = require('./otpVerificationModel');
+const {
+  normalizeSelections,
+  setRequestItems,
+  attachItemsToMany,
+} = require('./ewasteModel');
 
 /* ============================== STATUS MACHINE ============================== */
 
@@ -29,6 +34,9 @@ const mapDropOffRow = (row) => {
     // display); `wasteCategories` is the parsed multi-select array.
     wasteCategory: row.waste_category,
     wasteCategories: row.waste_category ? String(row.waste_category).split(',') : [],
+    ...(row.sanitization_requested !== undefined
+      ? { sanitizationRequested: Boolean(row.sanitization_requested) }
+      : {}),
     wasteQuantity: Number(row.waste_quantity),
     scheduledDate: row.scheduled_date,
     timeSlot: row.time_slot,
@@ -113,11 +121,12 @@ const createDropOffRequest = async (input) => {
     throw err;
   }
 
+  const selections = await normalizeSelections(input.items);
   const [result] = await db.execute(
     `INSERT INTO dropoff_requests
       (user_id, store_id, recycler_id, waste_category, waste_quantity,
-       scheduled_date, time_slot, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'REQUESTED')`,
+       scheduled_date, time_slot, sanitization_requested, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'REQUESTED')`,
     [
       Number(input.userId),
       store.id,
@@ -125,9 +134,11 @@ const createDropOffRequest = async (input) => {
       categories.join(','),
       Number(input.wasteQuantity),
       input.scheduledDate,
-      String(input.timeSlot).trim()
+      String(input.timeSlot).trim(),
+      input.sanitizationRequested ? 1 : 0
     ]
   );
+  await setRequestItems('dropoff', result.insertId, selections);
   return result.insertId;
 };
 
@@ -372,6 +383,7 @@ const REQUEST_SELECT = `
   dr.id, dr.user_id, dr.store_id, dr.recycler_id, dr.waste_category, dr.waste_quantity,
   dr.scheduled_date, dr.time_slot, dr.status, dr.completion_timestamp,
   dr.user_otp_verified, dr.recycler_otp_verified, dr.actual_quantity_kg,
+  dr.sanitization_requested,
   dr.created_at, dr.updated_at,
   u.name AS user_name, u.email AS user_email,
   r.name AS recycler_name, r.email AS recycler_email,
@@ -389,7 +401,9 @@ const getRequestById = async (id) => {
     `SELECT ${REQUEST_SELECT} FROM dropoff_requests dr ${REQUEST_JOINS} WHERE dr.id = ? LIMIT 1`,
     [id]
   );
-  return mapDropOffRow(rows[0]);
+  const request = mapDropOffRow(rows[0]);
+  if (request) await attachItemsToMany('dropoff', [request]);
+  return request;
 };
 
 const listForUser = async (userId, { status, limit = 10, offset = 0 } = {}) => {
@@ -411,10 +425,9 @@ const listForUser = async (userId, { status, limit = 10, offset = 0 } = {}) => {
      ORDER BY dr.created_at DESC LIMIT ? OFFSET ?`,
     [...values, limit, offset]
   );
-  return {
-    rows: rows.map((r) => ({ ...mapDropOffRow(r), otp: r.otp_user || null })),
-    total
-  };
+  const mapped = rows.map((r) => ({ ...mapDropOffRow(r), otp: r.otp_user || null }));
+  await attachItemsToMany('dropoff', mapped);
+  return { rows: mapped, total };
 };
 
 // Incoming drop-offs across all of a recycler's stores.
@@ -435,7 +448,9 @@ const listForRecycler = async (recyclerId, { status, limit = 50, offset = 0 } = 
      ORDER BY dr.created_at DESC LIMIT ? OFFSET ?`,
     [...values, limit, offset]
   );
-  return { rows: rows.map(mapDropOffRow), total };
+  const mapped = rows.map(mapDropOffRow);
+  await attachItemsToMany('dropoff', mapped);
+  return { rows: mapped, total };
 };
 
 // Admin: all drop-off requests (optional status filter), newest first, paginated.
@@ -456,7 +471,9 @@ const listAllForAdmin = async ({ status, limit = 20, offset = 0 } = {}) => {
      ORDER BY dr.created_at DESC LIMIT ? OFFSET ?`,
     [...values, limit, offset]
   );
-  return { rows: rows.map(mapDropOffRow), total };
+  const mapped = rows.map(mapDropOffRow);
+  await attachItemsToMany('dropoff', mapped);
+  return { rows: mapped, total };
 };
 
 module.exports = {

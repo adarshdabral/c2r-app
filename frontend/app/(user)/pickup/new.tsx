@@ -11,7 +11,13 @@ import {
   MapPin,
   Package,
 } from "lucide-react-native";
-import { api, type SavedAddress, type WasteType } from "@/lib/api";
+import {
+  api,
+  uploadRequestImages,
+  type SavedAddress,
+  type WasteType,
+  type RequestItemSelection,
+} from "@/lib/api";
 import {
   Screen,
   Text,
@@ -20,11 +26,16 @@ import {
   Field,
   Surface,
   Select,
+  Switch,
   type SelectOption,
 } from "@/components/ui";
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { CategoryMultiSelect } from "@/components/CategoryMultiSelect";
+import { CategoryAppliancePicker } from "@/components/booking/CategoryAppliancePicker";
+import { ImageUploader } from "@/components/booking/ImageUploader";
+import { ShieldCheck } from "lucide-react-native";
 import { useLocation } from "@/hooks/useLocation";
+import { reverseGeocode } from "@/lib/geocode";
 
 const WASTE_TYPES: WasteType[] = [
   "Waste Batteries",
@@ -58,6 +69,9 @@ export default function NewPickupScreen() {
   const { coords: userLocation, request: requestLocation } = useLocation();
 
   const [wasteCategories, setWasteCategories] = useState<WasteType[]>([]);
+  const [itemSelections, setItemSelections] = useState<RequestItemSelection[]>([]);
+  const [sanitizationRequested, setSanitizationRequested] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("");
 
   // Preferred slot (optional): a date + a time window. The assigned store
@@ -71,6 +85,7 @@ export default function NewPickupScreen() {
   const [selected, setSelected] = useState<number | "new" | null>(null);
   const [newAddress, setNewAddress] = useState("");
   const [pickedCoords, setPickedCoords] = useState<LatLng | null>(null);
+  const [locating, setLocating] = useState(false);
   const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -97,11 +112,26 @@ export default function NewPickupScreen() {
     });
   }, [requestLocation]);
 
+  // Reverse-geocode a dropped pin into the address field. `force` overwrites a
+  // typed address (used by "My location"); otherwise it only fills a blank field
+  // so a manually-typed address is never clobbered when nudging the pin.
+  const fillAddressFromPin = async (lat: number, lng: number, force: boolean) => {
+    const rev = await reverseGeocode(lat, lng);
+    if (rev?.displayName) {
+      setNewAddress((cur) => (force || !cur.trim() ? rev.displayName : cur));
+    }
+  };
+
   const useMyLocation = async () => {
-    const loc = userLocation ?? (await requestLocation());
-    if (loc) {
+    setLocating(true);
+    try {
+      const loc = userLocation ?? (await requestLocation());
+      if (!loc) return;
       setMapCenter({ ...loc });
       setPickedCoords({ ...loc });
+      await fillAddressFromPin(loc.lat, loc.lng, true);
+    } finally {
+      setLocating(false);
     }
   };
 
@@ -141,14 +171,25 @@ export default function NewPickupScreen() {
           : slotWindow || null;
       // No store is chosen here — the backend auto-assigns the best-matched store
       // (weighted by proximity, current daily load, and rating).
-      await api.post("/pickup-requests", {
+      const { data } = await api.post("/pickup-requests", {
         wasteCategories,
+        items: itemSelections,
+        sanitizationRequested,
         wasteQuantity: q,
         pickupAddress: address,
         pickupLatitude: lat,
         pickupLongitude: lng,
         preferredTimeSlot,
       });
+      // Upload photos to the new request (best-effort — booking already succeeded).
+      const newId = data?.request?.id;
+      if (newId && photos.length) {
+        try {
+          await uploadRequestImages("pickup", newId, photos);
+        } catch {
+          /* images are non-critical; the request is created */
+        }
+      }
       setDone(true);
     } catch (err: any) {
       setError(
@@ -215,6 +256,7 @@ export default function NewPickupScreen() {
       </Surface>
 
       {/* WASTE + QUANTITY */}
+      {/* E-waste types */}
       <Surface className="gap-4 p-5">
         <Text className="text-[15px] font-bold">What are we collecting?</Text>
         <Field label="E-waste types (select one or more)">
@@ -224,6 +266,11 @@ export default function NewPickupScreen() {
             onChange={setWasteCategories}
           />
         </Field>
+      </Surface>
+
+      {/* Quantity */}
+      <Surface className="gap-4 p-5">
+        <Text className="text-[15px] font-bold">How much, approximately ?</Text>
         <Field label="Quantity (kg)">
           <Input
             keyboardType="decimal-pad"
@@ -232,6 +279,35 @@ export default function NewPickupScreen() {
             onChangeText={setQuantity}
           />
         </Field>
+      </Surface>
+
+      {/* Itemize by CPCB category → appliance (optional detail) */}
+      <Surface className="gap-3 p-5">
+        <Text className="text-[15px] font-bold">Itemize your e-waste</Text>
+        <Text className="-mt-1 text-[12.5px] text-muted-foreground">
+          Optional. Pick the categories and appliances you&apos;re recycling.
+        </Text>
+        <CategoryAppliancePicker value={itemSelections} onChange={setItemSelections} />
+      </Surface>
+
+      {/* Photos */}
+      <Surface className="gap-3 p-5">
+        <Text className="text-[15px] font-bold">Photos</Text>
+        <ImageUploader images={photos} onChange={setPhotos} />
+      </Surface>
+
+      {/* Data sanitization certificate */}
+      <Surface className="flex-row items-center gap-3 p-5">
+        <View className="h-10 w-10 items-center justify-center rounded-2xl bg-accent">
+          <ShieldCheck size={20} color="#1f6b38" />
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="text-[14px] font-bold">Data sanitization certificate</Text>
+          <Text className="mt-0.5 text-[12px] text-muted-foreground">
+            Get a certificate confirming your data was securely wiped.
+          </Text>
+        </View>
+        <Switch value={sanitizationRequested} onValueChange={setSanitizationRequested} />
       </Surface>
 
       {/* PREFERRED TIME SLOTS — propose one, the recycler confirms */}
@@ -377,6 +453,7 @@ export default function NewPickupScreen() {
                 size="sm"
                 variant="outline"
                 onPress={useMyLocation}
+                loading={locating}
                 className="flex-row gap-1.5"
               >
                 <LocateFixed size={14} color="#14181a" />
@@ -386,7 +463,12 @@ export default function NewPickupScreen() {
             <LocationPicker
               value={pickedCoords}
               center={mapCenter}
-              onChange={(lat, lng) => setPickedCoords({ lat, lng })}
+              onChange={(lat, lng) => {
+                setPickedCoords({ lat, lng });
+                // The pin is the source of truth for the location — keep the
+                // address in step with wherever it's dropped.
+                fillAddressFromPin(lat, lng, true);
+              }}
             />
             {pickedCoords ? (
               <Text className="text-[12px] text-muted-foreground">

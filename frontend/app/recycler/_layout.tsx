@@ -12,6 +12,7 @@ export default function RecyclerLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="drives" options={{ headerShown: false }} />
     </Stack>
   );
 }

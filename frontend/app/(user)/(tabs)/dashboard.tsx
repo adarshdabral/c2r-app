@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { formatDistanceToNow } from "date-fns";
 import {
   CalendarClock,
+  CalendarHeart,
   PackageCheck,
   MapPin,
   Recycle,
@@ -16,6 +17,8 @@ import {
   KeyRound,
   Truck,
   Clock,
+  BarChart3,
+  Sparkles,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { Screen, Text, Surface } from "@/components/ui";
@@ -36,6 +39,7 @@ import { CountUp } from "@/components/motion/CountUp";
 import { ProgressRing } from "@/components/motion/ProgressRing";
 import { Floaty, Pulse } from "@/components/motion/Ambient";
 import { Shimmer } from "@/components/motion/Shimmer";
+import { FeaturedCarousel } from "@/components/site/FeaturedCarousel";
 
 // Bento: one prominent primary action + a compact trio (breaks the uniform grid).
 const PRIMARY_ACTION = {
@@ -52,6 +56,7 @@ const COMPACT_ACTIONS = [
   { icon: PackageCheck, label: "Drop-off", href: "/dropoff", colors: ["#0ea5b7", "#22b8cf"] },
   { icon: MapPin, label: "Find Stores", href: "/stores", colors: ["#4f46e5", "#6366f1"] },
   { icon: Recycle, label: "My Pickups", href: "/pickups", colors: ["#16a34a", "#0e9f6e"] },
+  { icon: CalendarHeart, label: "Events", href: "/drives", colors: ["#7c3aed", "#a855f7"] },
 ] as const;
 
 const TONE_ICON: Record<NotificationTone, { icon: LucideIcon; color: string; bg: string }> = {
@@ -147,19 +152,29 @@ export default function DashboardScreen() {
             </Text>
             <Text className="mt-1 text-[13.5px] text-muted-foreground">{subheading}</Text>
           </View>
-          <Pressable
-            onPress={() => router.push("/notifications" as any)}
-            hitSlop={8}
-            className="mt-1 h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
-            accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-          >
-            <Bell size={21} color="#14181a" />
-            {unread > 0 ? (
-              <View className="absolute -right-0.5 -top-0.5 h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1">
-                <Text className="text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</Text>
-              </View>
-            ) : null}
-          </Pressable>
+          <View className="mt-1 flex-row gap-2">
+            <Pressable
+              onPress={() => router.push("/assistant" as any)}
+              hitSlop={8}
+              className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
+              accessibilityLabel="Assistant"
+            >
+              <Sparkles size={20} color="#0d9488" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/notifications" as any)}
+              hitSlop={8}
+              className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
+              accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+            >
+              <Bell size={21} color="#14181a" />
+              {unread > 0 ? (
+                <View className="absolute -right-0.5 -top-0.5 h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1">
+                  <Text className="text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
 
@@ -317,6 +332,40 @@ export default function DashboardScreen() {
           </View>
         ))}
       </View>
+
+      {/* Bulk producers get a dedicated impact-reporting surface. */}
+      {userType === "bulk_producer" ? (
+        <Animated.View entering={FadeInDown.duration(460).delay(440)}>
+          <PressableScale onPress={() => router.push("/reports" as any)}>
+            <View className="mt-3 overflow-hidden rounded-3xl shadow-clay">
+              <LinearGradient
+                colors={["#0f766e", "#0d9488"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0.9 }}
+                style={{ padding: 18 }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                    <BarChart3 size={24} color="#fff" strokeWidth={2.2} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[16px] font-extrabold text-white">Impact reports</Text>
+                    <Text className="mt-0.5 text-[12.5px] text-white/85">
+                      Compliance-ready PDFs · CO₂, energy & trees saved
+                    </Text>
+                  </View>
+                  <View className="h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                    <ChevronRight size={18} color="#fff" />
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+          </PressableScale>
+        </Animated.View>
+      ) : null}
+
+      {/* Admin-curated featured content (renders nothing when empty). */}
+      <FeaturedCarousel />
 
       {/* Recent activity */}
       {feedLoading ? (

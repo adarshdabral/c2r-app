@@ -12,6 +12,7 @@ import {
   EmptyState,
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BookingDetails } from "@/components/booking/BookingDetails";
 
 // A drop-off can be cancelled by the user until it completes.
 const CANCELLABLE: DropOffStatus[] = [
@@ -137,6 +138,17 @@ export default function MyDropoffsScreen() {
       </View>
 
       {r.status === "OTP_PENDING" && r.otp ? <OtpDisplay otp={r.otp} /> : null}
+
+      <BookingDetails
+        type="dropoff"
+        id={r.id}
+        role="user"
+        declaredQty={r.wasteQuantity}
+        verifiedQty={r.actualQuantityKg}
+        items={r.items}
+        sanitizationRequested={r.sanitizationRequested}
+        onChange={load}
+      />
     </Surface>
   );
 

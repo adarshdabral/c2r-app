@@ -23,6 +23,7 @@ import {
   EmptyState,
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BookingDetails } from "@/components/booking/BookingDetails";
 
 // A pickup can be cancelled by the user until it is being handed over / completed.
 const CANCELLABLE: PickupStatus[] = [
@@ -228,6 +229,17 @@ export default function UserPickupsScreen() {
       ) : null}
 
       {r.status === "OTP_PENDING" && r.otp ? <OtpDisplay otp={r.otp} /> : null}
+
+      <BookingDetails
+        type="pickup"
+        id={r.id}
+        role="user"
+        declaredQty={r.wasteQuantity}
+        verifiedQty={r.actualQuantityKg}
+        items={r.items}
+        sanitizationRequested={r.sanitizationRequested}
+        onChange={load}
+      />
     </Surface>
   );
 
