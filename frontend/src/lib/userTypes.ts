@@ -1,7 +1,7 @@
 // Segmentation categories for role='user'. Extend by appending a value and
 // adding a route entry below; no auth/middleware change required.
 // Keep in sync with backend/config/userTypes.js.
-export const USER_TYPES = ['individual', 'small_business', 'bulk_producer'] as const;
+export const USER_TYPES = ['individual', 'small_business', 'bulk_producer', 'manufacturer'] as const;
 
 export type UserType = (typeof USER_TYPES)[number];
 
@@ -11,6 +11,7 @@ export const userTypeToRoute: Record<UserType, string> = {
   individual: '/dashboard/individual',
   small_business: '/dashboard/business',
   bulk_producer: '/dashboard/bulk',
+  manufacturer: '/dashboard/manufacturer',
 };
 
 // Fallback route when user_type is missing/unknown. Resolves via the
@@ -27,4 +28,5 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
   individual: 'Individual',
   small_business: 'Small Business',
   bulk_producer: 'Bulk Producer',
+  manufacturer: 'Manufacturer',
 };

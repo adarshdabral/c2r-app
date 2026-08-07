@@ -141,6 +141,65 @@ const seedEwasteTaxonomy = async () => {
   console.log(`✅ Seeded ${EWASTE_TAXONOMY.length} e-waste categories`);
 };
 
+// Seed reward rules / badges / catalog once (idempotent per-row). Data-driven:
+// admins tune points and add rows via the admin API — never a code change.
+const seedRewardConfig = async () => {
+  const rules = [
+    // event_type, points, per_kg, daily_cap, cooldown_s, expires_days, description
+    ['recycle_completed', 10, 1, null, null, 365, 'Points per kg recycled on a completed pickup/drop-off'],
+    ['pickup_scheduled', 20, 0, 3, null, 365, 'Scheduling a pickup (max 3/day)'],
+    ['drive_joined', 50, 0, null, null, 365, 'RSVP to a collection drive'],
+    ['profile_completed', 100, 0, null, null, null, 'Completing your profile (one-time)'],
+    ['bulk_recycle', 5, 1, null, null, 365, 'Bonus per kg for bulk producers'],
+    ['streak_bonus', 25, 0, 1, null, 365, 'Daily recycling streak bonus'],
+    ['invite_accepted', 150, 0, null, null, 365, 'A referred user completes registration'],
+    ['qr_verified', 30, 0, null, null, 365, 'QR handover verification'],
+    ['product_uploaded', 40, 0, null, null, 365, 'Manufacturer uploads product info']
+  ];
+  for (const [event, points, perKg, cap, cooldown, expires, desc] of rules) {
+    await db.execute(
+      `INSERT IGNORE INTO reward_rules
+        (event_type, points, per_kg, daily_cap, cooldown_seconds, expires_days, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [event, points, perKg, cap, cooldown, expires, desc]
+    );
+  }
+
+  const badges = [
+    // code, name, description, icon, criteria_type, criteria_event, threshold, tier, sort
+    ['first_recycle', 'First Recycle', 'Completed your first recycle', 'Sprout', 'event_count', 'recycle_completed', 1, 'bronze', 1],
+    ['drive_supporter', 'Drive Supporter', 'Joined 3 collection drives', 'CalendarHeart', 'event_count', 'drive_joined', 3, 'bronze', 2],
+    ['streak_7', 'Week Warrior', '7-day recycling streak', 'Flame', 'streak', null, 7, 'silver', 3],
+    ['eco_warrior', 'Eco Warrior', 'Earned 500 lifetime points', 'Leaf', 'lifetime_points', null, 500, 'silver', 4],
+    ['eco_champion', 'Eco Champion', 'Earned 2,000 lifetime points', 'Award', 'lifetime_points', null, 2000, 'gold', 5],
+    ['planet_hero', 'Planet Hero', 'Earned 5,000 lifetime points', 'Globe', 'lifetime_points', null, 5000, 'platinum', 6]
+  ];
+  for (const [code, name, desc, icon, ctype, cevent, threshold, tier, sort] of badges) {
+    await db.execute(
+      `INSERT IGNORE INTO badges
+        (code, name, description, icon, criteria_type, criteria_event, threshold, tier, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [code, name, desc, icon, ctype, cevent, threshold, tier, sort]
+    );
+  }
+
+  const catalog = [
+    // code, name, description, points_cost, stock, sort
+    ['pickup_priority', 'Priority Pickup', 'Skip the queue on your next pickup', 200, null, 1],
+    ['tree_plant', 'Plant a Tree', 'We plant a tree in your name', 300, null, 2],
+    ['voucher_50', '₹50 Shopping Voucher', 'Redeem for a ₹50 partner voucher', 500, null, 3],
+    ['tote_bag', 'Eco Tote Bag', 'A recycled-material tote bag', 800, 100, 4]
+  ];
+  for (const [code, name, desc, cost, stock, sort] of catalog) {
+    await db.execute(
+      `INSERT IGNORE INTO reward_catalog (code, name, description, points_cost, stock, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [code, name, desc, cost, stock, sort]
+    );
+  }
+  console.log('✅ Seeded reward rules, badges, and catalog');
+};
+
 const createTables = async () => {
   // USERS
   await db.execute(`
@@ -728,7 +787,114 @@ const createTables = async () => {
     )
   `);
 
+  // ==================== REWARD ENGINE (local system of record) ====================
+  // Points live locally so badges/streaks/redemption/expiry are queryable; the
+  // optional Hyperledger ledger (services/rewardsLedger) is a best-effort mirror.
+
+  // Cached per-user balance/level/streak (authoritative balance = latest ledger row).
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS reward_accounts (
+      user_id INT PRIMARY KEY,
+      points_balance INT NOT NULL DEFAULT 0,
+      lifetime_points INT NOT NULL DEFAULT 0,
+      level INT NOT NULL DEFAULT 1,
+      streak_count INT NOT NULL DEFAULT 0,
+      last_earn_date DATE NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Append-only transaction history (earn +delta / spend|expire -delta / adjust).
+  // The unique key makes ref'd earn events idempotent (one award per pickup, etc.).
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS reward_ledger (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      delta INT NOT NULL,
+      balance_after INT NOT NULL,
+      event_type VARCHAR(40) NOT NULL,
+      reason VARCHAR(200) NULL,
+      ref_type VARCHAR(30) NULL,
+      ref_id INT NULL,
+      expires_at DATE NULL,
+      expired BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by INT NULL,
+      meta JSON NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_reward_ledger_user (user_id, created_at),
+      INDEX idx_reward_ledger_expiry (expired, expires_at),
+      UNIQUE KEY uq_reward_event (event_type, ref_type, ref_id)
+    )
+  `);
+
+  // Admin-editable earning rules, one row per event_type.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS reward_rules (
+      event_type VARCHAR(40) PRIMARY KEY,
+      points INT NOT NULL DEFAULT 0,
+      per_kg BOOLEAN NOT NULL DEFAULT FALSE,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      daily_cap INT NULL,
+      cooldown_seconds INT NULL,
+      expires_days INT NULL,
+      description VARCHAR(200) NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Badge definitions + per-user awards.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS badges (
+      code VARCHAR(40) PRIMARY KEY,
+      name VARCHAR(80) NOT NULL,
+      description VARCHAR(200) NULL,
+      icon VARCHAR(40) NULL,
+      criteria_type ENUM('lifetime_points','event_count','streak','level') NOT NULL,
+      criteria_event VARCHAR(40) NULL,
+      threshold INT NOT NULL,
+      tier ENUM('bronze','silver','gold','platinum') NOT NULL DEFAULT 'bronze',
+      sort_order INT NOT NULL DEFAULT 0,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_badges (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      badge_code VARCHAR(40) NOT NULL,
+      awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_user_badge (user_id, badge_code)
+    )
+  `);
+
+  // Redeemable catalog + redemption records.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS reward_catalog (
+      code VARCHAR(40) PRIMARY KEY,
+      name VARCHAR(120) NOT NULL,
+      description VARCHAR(300) NULL,
+      points_cost INT NOT NULL,
+      stock INT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      sort_order INT NOT NULL DEFAULT 0
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS reward_redemptions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      catalog_code VARCHAR(40) NOT NULL,
+      points_spent INT NOT NULL,
+      status ENUM('REQUESTED','FULFILLED','CANCELLED') NOT NULL DEFAULT 'REQUESTED',
+      voucher_code VARCHAR(40) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_redemption_user (user_id, created_at)
+    )
+  `);
+
   await seedEwasteTaxonomy();
+  await seedRewardConfig();
 
   console.log("✅ Tables ensured");
 };
@@ -752,6 +918,22 @@ const startPickupSweeper = () => {
   logger.info('pickup sweeper started', { intervalMs: PICKUP_SWEEP_INTERVAL_MS });
 };
 
+// Reward-point expiry sweeper — claws back earn rows past their expiry. The job
+// itself no-ops when the `rewards` feature (or the operational toggle) is off, so
+// disabling the feature disables the scheduled job with no extra wiring. Default
+// every 6h; interval configurable.
+const { runExpirySweep } = require('./services/rewardEngine');
+const REWARD_EXPIRY_INTERVAL_MS = Number(process.env.REWARD_EXPIRY_INTERVAL_MS) || 6 * 60 * 60 * 1000;
+
+const startRewardExpirySweeper = () => {
+  const tick = () => {
+    runExpirySweep().catch((err) => logger.error('reward expiry sweep failed', err));
+  };
+  const timer = setInterval(tick, REWARD_EXPIRY_INTERVAL_MS);
+  timer.unref?.();
+  logger.info('reward expiry sweeper started', { intervalMs: REWARD_EXPIRY_INTERVAL_MS });
+};
+
 const startServer = async () => {
   try {
     await createTables();
@@ -761,6 +943,7 @@ const startServer = async () => {
     });
 
     startPickupSweeper();
+    startRewardExpirySweeper();
 
   } catch (error) {
     // Print the whole error — a bare `error.message` is empty for some pool

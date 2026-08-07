@@ -1,54 +1,42 @@
 /**
- * Reward-points business logic layered over the raw ledger client. Keeps the
- * "how many points, for whom, when" rules in one place so the completion
- * controllers only have to fire a single best-effort call.
+ * Recycle-completion reward hook. Thin adapter kept for backward compatibility:
+ * the pickup/drop-off controllers call awardForCompletion() exactly as before,
+ * but the logic now lives in the reward engine (local ledger + badges + streak,
+ * with the blockchain ledger as an optional mirror).
  */
-const logger = require('../utils/logger');
-const ledger = require('./rewardsLedger');
-const { isRewardsEnabled } = require('../models/settingsModel');
-const { isEnabled } = require('./featureService');
+const engine = require('./rewardEngine');
 const { findUserById } = require('../models/userModel');
-
-// Points earned per kg recycled (configurable). points = round(kg * rate).
-const POINTS_PER_KG = Number(process.env.REWARDS_POINTS_PER_KG) || 10;
-
-// One ledger account per app user. Recyclers/admins never earn — only the
-// citizen who raised the pickup/drop-off does.
-const accountIdForUser = (userId) => `user_${userId}`;
-
-const pointsForQuantity = (kg) => Math.max(0, Math.round(Number(kg) * POINTS_PER_KG));
+const logger = require('../utils/logger');
 
 /**
- * Award reward points for a completed recycle (a pickup or drop-off that just
- * reached COMPLETED). BEST-EFFORT: this never throws — a disabled flag, an
- * unconfigured or unreachable ledger, or a bad quantity all resolve to a
- * silent no-op so the recycle-completion response is never affected.
- *
- * @param {object} request  the completed request (needs userId + actualQuantityKg)
+ * Award points for a completed recycle (pickup/drop-off that reached COMPLETED).
+ * Best-effort / fire-and-forget: never throws or slows the completion path.
+ * @param {object} request  needs { userId, actualQuantityKg, id }
  * @param {'pickup'|'dropoff'} source
  */
 async function awardForCompletion(request, source) {
   try {
-    // Structural feature gate first — a disabled `rewards` feature never awards.
-    if (!(await isEnabled('rewards'))) return;
-    if (!ledger.isConfigured()) return;
-    if (!(await isRewardsEnabled())) return;
-
     const userId = request && request.userId;
     const qty = request && request.actualQuantityKg;
-    if (!userId || !Number.isFinite(Number(qty))) return;
+    if (!userId) return;
 
-    const points = pointsForQuantity(qty);
-    if (points <= 0) return;
+    await engine.awardSafe(userId, 'recycle_completed', {
+      quantityKg: qty,
+      refType: source,
+      refId: request.id,
+      meta: { source },
+    });
 
+    // Bulk producers earn an additional per-kg bonus.
     const user = await findUserById(userId);
-    const id = accountIdForUser(userId);
-    await ledger.ensureAccount(id, (user && user.name) || id);
-    await ledger.give(id, points);
-
-    logger.info('reward points awarded', { userId, points, source, requestId: request.id });
+    if (user && user.user_type === 'bulk_producer') {
+      await engine.awardSafe(userId, 'bulk_recycle', {
+        quantityKg: qty,
+        refType: source,
+        refId: request.id,
+      });
+    }
   } catch (err) {
-    // Swallow: rewards must never break or slow the completion path.
     logger.error('reward award failed (ignored)', {
       error: err.message,
       userId: request && request.userId,
@@ -57,4 +45,8 @@ async function awardForCompletion(request, source) {
   }
 }
 
-module.exports = { awardForCompletion, accountIdForUser, pointsForQuantity, POINTS_PER_KG };
+module.exports = {
+  awardForCompletion,
+  // Re-exported so existing importers (rewardController) keep working.
+  accountIdForUser: engine.accountIdForUser,
+};

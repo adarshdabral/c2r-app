@@ -279,24 +279,94 @@ export const reportDownloadPath = (id: number) => `/reports/${id}/download`;
 // When false the app renders no rewards UI and performs no ledger operations.
 export type RewardsStatus = { enabled: boolean };
 
-// The current user's points balance (GET /api/rewards/me). `enabled:false` means
-// the feature is off — treat as "no rewards".
+// A badge the user can earn.
+export type RewardBadge = {
+  code: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  tier: "bronze" | "silver" | "gold" | "platinum";
+  earned?: boolean;
+  awardedAt?: string | null;
+};
+
+// The current user's rewards profile (GET /api/rewards/me). `enabled:false` means
+// the programme is off — treat as "no rewards". `points` is kept as a
+// backward-compatible alias of `pointsBalance`.
 export type RewardsSummary = {
   enabled: boolean;
   id?: string;
   owner: string | null;
   points: number;
+  pointsBalance?: number;
+  lifetimePoints?: number;
+  level?: number;
+  toNext?: number;
+  progress?: number;
+  nextThreshold?: number | null;
+  streakCount?: number;
+  badges?: RewardBadge[];
 };
 
-// One entry of the tamper-evident on-chain audit trail.
+// One row of the local reward ledger (earn +delta / spend|expire -delta).
 export type RewardHistoryEntry = {
-  txId: string;
-  timestamp: string | null;
-  points: number;
-  owner: string | null;
+  id: number;
+  delta: number;
+  balanceAfter: number;
+  eventType: string;
+  reason: string | null;
+  createdAt: string;
 };
 
 export type RewardsHistory = { enabled: boolean; history: RewardHistoryEntry[] };
+
+export type RewardCatalogItem = {
+  code: string;
+  name: string;
+  description: string | null;
+  pointsCost: number;
+  stock: number | null;
+};
+
+export type RewardRedemption = {
+  id: number;
+  catalogCode: string;
+  name: string;
+  pointsSpent: number;
+  status: "REQUESTED" | "FULFILLED" | "CANCELLED";
+  voucherCode: string | null;
+  createdAt?: string;
+};
+
+export type LeaderboardRow = {
+  rank: number;
+  userId: number;
+  name: string;
+  lifetimePoints: number;
+  level: number;
+};
+
+export const getRewards = () => api.get<RewardsSummary>("/rewards/me").then((r) => r.data);
+
+export const getRewardHistory = () =>
+  api.get<RewardsHistory>("/rewards/me/history").then((r) => (Array.isArray(r.data.history) ? r.data.history : []));
+
+export const getRewardBadges = () =>
+  api.get<{ badges: RewardBadge[] }>("/rewards/me/badges").then((r) => r.data.badges);
+
+export const getRewardCatalog = () =>
+  api.get<{ catalog: RewardCatalogItem[]; balance: number }>("/rewards/catalog").then((r) => r.data);
+
+export const redeemReward = (code: string) =>
+  api.post<{ redemption: RewardRedemption }>("/rewards/redeem", { code }).then((r) => r.data.redemption);
+
+export const getRewardLeaderboard = () =>
+  api
+    .get<{ leaderboard: LeaderboardRow[]; me: LeaderboardRow | null }>("/rewards/leaderboard")
+    .then((r) => r.data);
+
+export const getMyRedemptions = () =>
+  api.get<{ redemptions: RewardRedemption[] }>("/rewards/me/redemptions").then((r) => r.data.redemptions);
 
 // Admin feature flags (GET /api/admin/settings). `rewardsConfigured` is false
 // when the backend has no ledger URL/key — the toggle can still be flipped but

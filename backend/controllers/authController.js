@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 const logger = require('../utils/logger');
+const rewardEngine = require('../services/rewardEngine');
 const generateToken = require('../utils/generateToken');
 const { sendOTP, sendResetPasswordEmail } = require('../utils/sendEmail');
 const { generateOTP } = require('../utils/generateToken');
@@ -235,6 +236,14 @@ const updateProfile = async (req, res) => {
       name: String(name).trim(),
       email: normalizedEmail
     });
+    // One-time reward for completing the profile (idempotent per user; citizens
+    // only). Best-effort — never affects the profile-save response.
+    if (req.user.role === 'user') {
+      rewardEngine.awardSafe(req.user.id, 'profile_completed', {
+        refType: 'user',
+        refId: req.user.id
+      });
+    }
     const updated = await findUserById(req.user.id);
     return res.status(200).json({
       name: updated.name,

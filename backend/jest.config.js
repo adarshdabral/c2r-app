@@ -20,6 +20,7 @@ module.exports = {
     'config/userTypes.js',
     'config/features.js',
     'services/featureService.js',
+    'utils/rewardMath.js',
   ],
   coverageThreshold: {
     global: { statements: 85, branches: 80, functions: 90, lines: 85 },

@@ -3,6 +3,7 @@ const ApiError = require('../utils/ApiError');
 const drives = require('../models/collectionDriveModel');
 const driveReportService = require('../services/driveReportService');
 const driveReportModel = require('../models/collectionDriveReportModel');
+const rewardEngine = require('../services/rewardEngine');
 
 const parseId = (raw, label = 'drive id') => {
   const id = Number(raw);
@@ -109,6 +110,8 @@ const downloadReport = asyncHandler(async (req, res) => {
 const rsvp = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id);
   await drives.rsvp(id, req.user.id);
+  // Reward for joining a drive (idempotent per drive; best-effort).
+  rewardEngine.awardSafe(req.user.id, 'drive_joined', { refType: 'drive', refId: id });
   res.status(201).json(await drives.getById(id, req.user.id));
 });
 

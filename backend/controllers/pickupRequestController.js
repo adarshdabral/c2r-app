@@ -18,6 +18,7 @@ const {
 } = require('../models/pickupRequestModel');
 const { verifyOtp, getHistory } = require('../models/otpVerificationModel');
 const { awardForCompletion } = require('../services/rewardsService');
+const rewardEngine = require('../services/rewardEngine');
 const { generateTransactionReportSafe } = require('../services/reportService');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
@@ -77,6 +78,9 @@ const createHandler = asyncHandler(async (req, res) => {
     items,
     sanitizationRequested
   });
+
+  // Reward for scheduling a pickup (best-effort; capped/no-op per rules).
+  rewardEngine.awardSafe(req.user.id, 'pickup_scheduled', { refType: 'pickup', refId: id });
 
   // Round 1 broadcast to the nearest eligible stores.
   const request = await getRequestById(id);
