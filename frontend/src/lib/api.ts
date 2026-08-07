@@ -834,23 +834,62 @@ export type FavoriteRecycler = {
   completedCount: number;
 } | null;
 
+export type RecyclingInsights = {
+  quantityKg: number;
+  co2AvoidedKg: number;
+  treesEquivalent: number;
+  energySavedKwh: number;
+  waterSavedLiters: number;
+  landfillDivertedKg: number;
+};
+
+export type RecyclerBusinessStats = {
+  completed: number;
+  totalKg: number;
+  stores: number;
+  verified: number;
+  avgRating: number;
+  reviews: number;
+  insights: RecyclingInsights;
+};
+
+export type RouteStop = {
+  id: number;
+  address: string;
+  wasteCategory: string;
+  status: string;
+  distanceKm: number | null;
+};
+
+// One role-aware bundle. Consumer fields are always present for role='user';
+// recycler-only fields appear for role='recycler'.
 export type PersonalizationHome = {
   role: UserRole;
   userType: string | null;
   greeting: string | null;
   quickActions: PersonalizedAction[];
-  suggestedActions: SuggestedAction[];
-  recommendedRecyclers: RecommendedRecycler[];
-  nearbyDrives: CollectionDrive[];
-  driveReminders: CollectionDrive[];
-  frequentWasteTypes: FrequentWasteType[];
-  preferredTimeSlots: { slot: string; count: number }[];
-  favoriteRecycler: FavoriteRecycler;
-  recentActivity: { type: RequestKind; id: number; category: string; status: string; createdAt: string }[];
+  // Consumer
+  suggestedActions?: SuggestedAction[];
+  recommendedRecyclers?: RecommendedRecycler[];
+  nearbyDrives?: CollectionDrive[];
+  driveReminders?: CollectionDrive[];
+  frequentWasteTypes?: FrequentWasteType[];
+  preferredTimeSlots?: { slot: string; count: number }[];
+  favoriteRecycler?: FavoriteRecycler;
+  recentActivity?: { type: RequestKind; id: number; category: string; status: string; createdAt: string }[];
   preferredAddress?: { id: number; label: string | null; address: string } | null;
   savedLocationCount?: number;
-  stats: { completed: number; totalKg: number } | null;
-  rewardTip: { balance: number; message: string; href: string } | null;
+  stats?: { completed: number; totalKg: number } | null;
+  recyclingInsights?: RecyclingInsights | null;
+  bulkSuggestion?: { label: string; hint: string; href: string } | null;
+  moduleNotes?: { products?: string } | null;
+  rewardTip?: { balance: number; message: string; href: string } | null;
+  // Recycler
+  businessStats?: RecyclerBusinessStats;
+  pickupDemand?: number;
+  nearbyRequests?: { id: number; address: string; wasteCategory: string; distanceKm: number | null }[];
+  routeSuggestions?: RouteStop[];
+  driveInsights?: { hosted: number; upcoming: number; totalGoing: number };
   generatedAt: string;
 };
 

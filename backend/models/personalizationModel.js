@@ -108,6 +108,53 @@ const stats = async (userId) => {
   return { completed: Number(row.completed), totalKg: Math.round(Number(row.totalKg) * 10) / 10 };
 };
 
+/* ------------------------------ Recycler side ------------------------------ */
+
+// Lifetime processing stats for a recycler (completed pickups + drop-offs).
+const recyclerStats = async (recyclerId) => {
+  const [[row]] = await db.query(
+    `SELECT COUNT(*) AS completed, COALESCE(SUM(kg), 0) AS totalKg FROM (
+        SELECT COALESCE(actual_quantity_kg, waste_quantity) AS kg
+          FROM pickup_requests WHERE assigned_recycler_id = ? AND status = 'COMPLETED'
+        UNION ALL
+        SELECT COALESCE(actual_quantity_kg, waste_quantity) AS kg
+          FROM dropoff_requests WHERE recycler_id = ? AND status = 'COMPLETED'
+     ) t`,
+    [recyclerId, recyclerId]
+  );
+  return { completed: Number(row.completed), totalKg: Math.round(Number(row.totalKg) * 10) / 10 };
+};
+
+// Store portfolio aggregate for a recycler.
+const recyclerStoreAgg = async (recyclerId) => {
+  const [[row]] = await db.query(
+    `SELECT COUNT(*) AS stores,
+            COALESCE(AVG(NULLIF(rating, 0)), 0) AS avgRating,
+            COALESCE(SUM(total_reviews), 0) AS reviews,
+            SUM(verification_status = 'Verified') AS verified
+       FROM stores WHERE recycler_id = ?`,
+    [recyclerId]
+  );
+  return {
+    stores: Number(row.stores),
+    verified: Number(row.verified || 0),
+    avgRating: Math.round(Number(row.avgRating) * 10) / 10,
+    reviews: Number(row.reviews),
+  };
+};
+
+// Open pickup demand — broadcast requests this recycler is a live candidate for.
+const recyclerOpenDemand = async (recyclerId) => {
+  const [[{ n }]] = await db.query(
+    `SELECT COUNT(*) AS n
+       FROM pickup_request_candidates c
+       JOIN pickup_requests pr ON pr.id = c.request_id
+      WHERE c.recycler_id = ? AND c.status = 'NOTIFIED' AND pr.status = 'BROADCASTED'`,
+    [recyclerId]
+  );
+  return n;
+};
+
 module.exports = {
   frequentWasteTypes,
   preferredTimeSlots,
@@ -115,4 +162,7 @@ module.exports = {
   recentActivity,
   hasActivePickup,
   stats,
+  recyclerStats,
+  recyclerStoreAgg,
+  recyclerOpenDemand,
 };

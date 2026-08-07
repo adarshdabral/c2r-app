@@ -9,11 +9,13 @@ const personalizationModel = require('../models/personalizationModel');
 const addressModel = require('../models/addressModel');
 const storeModel = require('../models/storeModel');
 const driveModel = require('../models/collectionDriveModel');
+const pickupModel = require('../models/pickupRequestModel');
 const { findUserById } = require('../models/userModel');
 const { isEnabled } = require('./featureService');
 const { isRewardsEnabled } = require('../models/settingsModel');
 const rewardModel = require('../models/rewardModel');
 const catalogModel = require('../models/rewardCatalogModel');
+const { metricsForKg } = require('./reportService');
 const logger = require('../utils/logger');
 
 const RECOMMENDED_LIMIT = 5;
@@ -126,23 +128,49 @@ async function getHome(authUser) {
   const userType = (user && user.user_type) || null;
   const greeting = firstName(user && user.name);
 
-  // Recycler/admin get a lighter, valid bundle (their consoles are elsewhere).
-  if (role !== 'user') {
+  // ---- Recycler: pickup demand, open requests, a route, business stats ----
+  if (role === 'recycler') {
+    const [bizStats, storeAgg, openDemand, inbox, hosted] = await Promise.all([
+      safe(personalizationModel.recyclerStats(authUser.id), { completed: 0, totalKg: 0 }),
+      safe(personalizationModel.recyclerStoreAgg(authUser.id), { stores: 0, verified: 0, avgRating: 0, reviews: 0 }),
+      safe(personalizationModel.recyclerOpenDemand(authUser.id), 0),
+      safe(pickupModel.listForRecycler(authUser.id, { scope: 'active' }), []),
+      safe(driveModel.listForHost(authUser.id), []),
+    ]);
+    const openOffers = inbox.filter((r) => r.status === 'BROADCASTED');
+    const route = inbox
+      .filter((r) => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'OTP_PENDING'].includes(r.status))
+      .sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999))
+      .slice(0, 8)
+      .map((r) => ({ id: r.id, address: r.pickupAddress, wasteCategory: r.wasteCategory, status: r.status, distanceKm: r.distanceKm ?? null }));
+    const upcoming = hosted.filter((d) => d.status === 'UPCOMING');
     return {
       role,
       userType,
       greeting,
       quickActions: quickActionsFor(role, userType),
-      suggestedActions: [],
-      recommendedRecyclers: [],
-      nearbyDrives: [],
-      driveReminders: [],
-      frequentWasteTypes: [],
-      preferredTimeSlots: [],
-      favoriteRecycler: null,
-      recentActivity: [],
-      stats: null,
-      rewardTip: null,
+      businessStats: { ...bizStats, ...storeAgg, insights: metricsForKg(bizStats.totalKg) },
+      pickupDemand: openDemand,
+      nearbyRequests: openOffers.slice(0, 5).map((r) => ({ id: r.id, address: r.pickupAddress, wasteCategory: r.wasteCategory, distanceKm: r.distanceKm ?? null })),
+      routeSuggestions: route,
+      driveInsights: {
+        hosted: hosted.length,
+        upcoming: upcoming.length,
+        totalGoing: upcoming.reduce((n, d) => n + (d.goingCount || 0), 0),
+      },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  // ---- Admin: quick actions only; full platform analytics is delivered by the
+  // dedicated Admin Analytics feature (avoid duplicating that surface here). ----
+  if (role === 'admin') {
+    return {
+      role,
+      userType,
+      greeting,
+      quickActions: quickActionsFor(role, userType),
+      analyticsHref: '/admin',
       generatedAt: new Date().toISOString(),
     };
   }
@@ -188,6 +216,22 @@ async function getHome(authUser) {
 
   const tip = await rewardTip(authUser.id);
 
+  // Recycling insights — environmental equivalents of what the user has diverted
+  // (reuses the reports engine's conversion factors; no duplication).
+  const recyclingInsights = stats && stats.totalKg > 0 ? metricsForKg(stats.totalKg) : null;
+
+  // Persona hint: business/bulk accounts get a bulk-pickup suggestion once they
+  // have a recycling track record; manufacturers note the pending products module.
+  const isBusiness = userType === 'small_business' || userType === 'bulk_producer';
+  const bulkSuggestion =
+    isBusiness && stats && stats.completed > 0
+      ? { label: 'Schedule a bulk pickup', hint: 'Consolidate your business e-waste', href: '/pickup/new' }
+      : null;
+  const moduleNotes =
+    userType === 'manufacturer'
+      ? { products: 'Product lifecycle & recovery analytics arrive with the Products module.' }
+      : null;
+
   return {
     role,
     userType,
@@ -206,6 +250,9 @@ async function getHome(authUser) {
       : null,
     savedLocationCount: addresses.length,
     stats,
+    recyclingInsights,
+    bulkSuggestion,
+    moduleNotes,
     rewardTip: tip,
     generatedAt: new Date().toISOString(),
   };

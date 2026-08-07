@@ -34,6 +34,8 @@ import {
 } from "@/components/ui";
 import { TutorialLauncher } from "@/components/TutorialLauncher";
 import { GradientHeader } from "@/components/GradientHeader";
+import { RecyclerInsights } from "@/components/personalization/RecyclerInsights";
+import { useFeature } from "@/context/FeatureContext";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { useColors } from "@/lib/theme";
 import { PICKUP_LABELS, VERIF_TEXT, VERIF_BG } from "@/lib/constants";
@@ -57,6 +59,7 @@ type Notification = {
 export default function RecyclerDashboardScreen() {
   const router = useRouter();
   const c = useColors();
+  const personalization = useFeature("personalization");
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [incomingDropoffs, setIncomingDropoffs] = useState<DropOffRequest[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -188,6 +191,9 @@ export default function RecyclerDashboardScreen() {
 
       {/* Guided tour of the recycler console (auto-shows once on first login). */}
       <TutorialLauncher tutorialKey="recycler" className="mt-5" />
+
+      {/* Personalized recycler insights (only when the feature is enabled). */}
+      {personalization ? <RecyclerInsights /> : null}
 
       {/* Host collection drives */}
       <Animated.View entering={FadeInDown.duration(420).delay(60)}>

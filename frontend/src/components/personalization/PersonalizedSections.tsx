@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { CalendarHeart, ChevronRight, MapPin, Sparkles, Star } from "lucide-react-native";
+import { CalendarHeart, ChevronRight, Leaf, MapPin, Sparkles, Star, TreePine, Zap } from "lucide-react-native";
 import { Text, Surface } from "@/components/ui";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { getPersonalizationHome, type PersonalizationHome } from "@/lib/api";
@@ -33,10 +33,11 @@ export function PersonalizedSections() {
   if (!home) return null;
 
   const reminder = home.driveReminders?.[0];
-  const hasSuggested = home.suggestedActions?.length > 0;
-  const hasRecs = home.recommendedRecyclers?.length > 0;
-  const hasFreq = home.frequentWasteTypes?.length > 0;
-  if (!reminder && !hasSuggested && !hasRecs && !hasFreq) return null;
+  const hasSuggested = (home.suggestedActions?.length ?? 0) > 0;
+  const hasRecs = (home.recommendedRecyclers?.length ?? 0) > 0;
+  const hasFreq = (home.frequentWasteTypes?.length ?? 0) > 0;
+  const ins = home.recyclingInsights;
+  if (!reminder && !hasSuggested && !hasRecs && !hasFreq && !ins) return null;
 
   const go = (href: string) => router.push(href as any);
 
@@ -63,6 +64,21 @@ export function PersonalizedSections() {
         </PressableScale>
       ) : null}
 
+      {/* Recycling insights (environmental equivalents of what you've diverted) */}
+      {ins ? (
+        <View className="mb-5">
+          <View className="mb-3 flex-row items-center gap-2">
+            <Leaf size={16} color={c.accentForeground} />
+            <Text variant="h3">Your recycling impact</Text>
+          </View>
+          <View className="flex-row gap-2.5">
+            <InsightStat icon={Leaf} label="CO₂ avoided" value={`${ins.co2AvoidedKg} kg`} tint={c.accentForeground} />
+            <InsightStat icon={TreePine} label="Trees eq." value={`${ins.treesEquivalent}`} tint="#1f7a3d" />
+            <InsightStat icon={Zap} label="Energy" value={`${ins.energySavedKwh} kWh`} tint="#e0a422" />
+          </View>
+        </View>
+      ) : null}
+
       {/* Suggested actions */}
       {hasSuggested ? (
         <View className="mb-5">
@@ -71,7 +87,7 @@ export function PersonalizedSections() {
             <Text variant="h3">Suggested for you</Text>
           </View>
           <View className="gap-2.5">
-            {home.suggestedActions.map((a) => (
+            {(home.suggestedActions ?? []).map((a) => (
               <PressableScale key={a.key} onPress={() => go(a.href)}>
                 <Surface variant="inset" className="flex-row items-center gap-3 p-3.5">
                   <View className="min-w-0 flex-1">
@@ -102,7 +118,7 @@ export function PersonalizedSections() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 12, paddingRight: 8 }}
           >
-            {home.recommendedRecyclers.map((s) => (
+            {(home.recommendedRecyclers ?? []).map((s) => (
               <PressableScale key={s.id} onPress={() => go(`/stores/${s.id}`)}>
                 <Surface className="w-56 gap-1.5 p-4">
                   <Text className="text-[14px] font-bold" numberOfLines={1}>
@@ -133,6 +149,19 @@ export function PersonalizedSections() {
         </View>
       ) : null}
 
+      {/* Bulk suggestion (business/bulk personas) */}
+      {home.bulkSuggestion ? (
+        <PressableScale onPress={() => go(home.bulkSuggestion!.href)}>
+          <Surface variant="inset" className="mb-5 flex-row items-center gap-3 p-3.5">
+            <View className="min-w-0 flex-1">
+              <Text className="text-[13.5px] font-semibold" numberOfLines={1}>{home.bulkSuggestion.label}</Text>
+              <Text variant="caption" numberOfLines={1}>{home.bulkSuggestion.hint}</Text>
+            </View>
+            <ChevronRight size={17} color={c.mutedForeground} />
+          </Surface>
+        </PressableScale>
+      ) : null}
+
       {/* Frequently recycled */}
       {hasFreq ? (
         <View className="mb-1">
@@ -140,7 +169,7 @@ export function PersonalizedSections() {
             You recycle most
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {home.frequentWasteTypes.map((f) => (
+            {(home.frequentWasteTypes ?? []).map((f) => (
               <View key={f.category} className="rounded-full border border-border bg-card px-3 py-1.5">
                 <Text className="text-[12px] font-medium" numberOfLines={1}>
                   {f.category}
@@ -151,5 +180,25 @@ export function PersonalizedSections() {
         </View>
       ) : null}
     </Animated.View>
+  );
+}
+
+function InsightStat({
+  icon: Icon,
+  label,
+  value,
+  tint,
+}: {
+  icon: typeof Leaf;
+  label: string;
+  value: string;
+  tint: string;
+}) {
+  return (
+    <Surface variant="inset" className="flex-1 items-center gap-1 px-2 py-3">
+      <Icon size={17} color={tint} />
+      <Text className="font-display text-[15px]">{value}</Text>
+      <Text variant="caption" numberOfLines={1}>{label}</Text>
+    </Surface>
   );
 }
