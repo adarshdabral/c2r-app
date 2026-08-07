@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Gift,
+  Megaphone,
   Settings2,
   Sparkles,
   ToggleRight,
@@ -16,6 +17,7 @@ import { api, type AdminSettings as AdminSettingsData } from "@/lib/api";
 import { Text, Card, Surface, Switch, LoadingState, ErrorState, EmptyState } from "@/components/ui";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { PlatformFeatures } from "@/features/PlatformFeatures";
+import { AdminBroadcast } from "@/features/AdminBroadcast";
 import { useColors } from "@/lib/theme";
 
 /**
@@ -28,10 +30,11 @@ import { useColors } from "@/lib/theme";
  *   ├── Personalization     (placeholder)
  *   └── AI Chatbot          (placeholder)
  */
-type Page = "menu" | "features" | "rewards" | "personalization" | "chatbot";
+type Page = "menu" | "features" | "announcements" | "rewards" | "personalization" | "chatbot";
 
 const MENU: { key: Page; title: string; subtitle: string; icon: LucideIcon }[] = [
   { key: "features", title: "Platform Features", subtitle: "Enable or disable platform modules", icon: ToggleRight },
+  { key: "announcements", title: "Announcements", subtitle: "Broadcast an in-app notification", icon: Megaphone },
   { key: "rewards", title: "Rewards", subtitle: "Reward programme activation & settings", icon: Gift },
   { key: "personalization", title: "Personalization", subtitle: "Recommendations & personalization settings", icon: Sparkles },
   { key: "chatbot", title: "AI Chatbot", subtitle: "Assistant behaviour & settings", icon: Bot },
@@ -58,6 +61,7 @@ export function AdminSettings() {
         <Text variant="h2" className="mb-4">{meta.title}</Text>
 
         {page === "features" ? <PlatformFeatures /> : null}
+        {page === "announcements" ? <AdminBroadcast /> : null}
         {page === "rewards" ? <RewardsSettings /> : null}
         {page === "personalization" ? (
           <ModulePlaceholder module="Personalization" />
