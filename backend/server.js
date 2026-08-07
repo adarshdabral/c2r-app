@@ -26,6 +26,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const siteContentRoutes = require('./routes/siteContentRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
 const featureRoutes = require('./routes/featureRoutes');
+const personalizationRoutes = require('./routes/personalizationRoutes');
 const { requireFeature } = require('./middleware/featureFlag');
 const { FEATURE_REGISTRY } = require('./config/features');
 const featureFlagModel = require('./models/featureFlagModel');
@@ -80,6 +81,7 @@ app.use('/api/collection-drives', collectionDriveRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/site-content', siteContentRoutes);
 app.use('/api/assistant', requireFeature('chatbot'), assistantRoutes);
+app.use('/api/personalization', requireFeature('personalization'), personalizationRoutes);
 app.use("/api/admin", adminRoutes);
 
 /* ----------------------- 404 HANDLER ----------------------- */

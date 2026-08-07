@@ -42,6 +42,7 @@ import { ProgressRing } from "@/components/motion/ProgressRing";
 import { Floaty, Pulse } from "@/components/motion/Ambient";
 import { Shimmer } from "@/components/motion/Shimmer";
 import { FeaturedCarousel } from "@/components/site/FeaturedCarousel";
+import { PersonalizedSections } from "@/components/personalization/PersonalizedSections";
 
 // Bento: one prominent primary action + a compact trio (breaks the uniform grid).
 const PRIMARY_ACTION = {
@@ -390,6 +391,9 @@ export default function DashboardScreen() {
           </PressableScale>
         </Animated.View>
       ) : null}
+
+      {/* History-driven personalization (only when the feature is enabled). */}
+      {flags.personalization ? <PersonalizedSections /> : null}
 
       {/* Admin-curated featured content (renders nothing when empty). */}
       <FeaturedCarousel />

@@ -812,3 +812,48 @@ export const setAdminFeature = (key: string, enabled: boolean) =>
   api
     .patch<{ feature: AdminFeatureFlag; features: AdminFeatureFlag[] }>(`/admin/features/${key}`, { enabled })
     .then((r) => r.data);
+
+/* ============================== PERSONALIZATION ============================== */
+
+export type PersonalizedAction = { label: string; href: string; icon?: string };
+export type SuggestedAction = { key: string; label: string; hint: string; href: string };
+export type RecommendedRecycler = {
+  id: number;
+  storeName: string;
+  city: string | null;
+  rating: number | null;
+  distanceKm: number | null;
+  acceptedWasteTypes: string[];
+};
+export type FrequentWasteType = { category: string; count: number };
+export type FavoriteRecycler = {
+  storeId: number;
+  storeName: string;
+  rating: number | null;
+  city: string | null;
+  completedCount: number;
+} | null;
+
+export type PersonalizationHome = {
+  role: UserRole;
+  userType: string | null;
+  greeting: string | null;
+  quickActions: PersonalizedAction[];
+  suggestedActions: SuggestedAction[];
+  recommendedRecyclers: RecommendedRecycler[];
+  nearbyDrives: CollectionDrive[];
+  driveReminders: CollectionDrive[];
+  frequentWasteTypes: FrequentWasteType[];
+  preferredTimeSlots: { slot: string; count: number }[];
+  favoriteRecycler: FavoriteRecycler;
+  recentActivity: { type: RequestKind; id: number; category: string; status: string; createdAt: string }[];
+  preferredAddress?: { id: number; label: string | null; address: string } | null;
+  savedLocationCount?: number;
+  stats: { completed: number; totalKg: number } | null;
+  rewardTip: { balance: number; message: string; href: string } | null;
+  generatedAt: string;
+};
+
+// The personalized home bundle. Only called when the personalization flag is on.
+export const getPersonalizationHome = () =>
+  api.get<PersonalizationHome>("/personalization/home").then((r) => r.data);

@@ -50,7 +50,7 @@ import {
   type SelectOption,
 } from "@/components/ui";
 import { ContentSection } from "@/features/admin-content";
-import { PlatformFeatures } from "@/features/PlatformFeatures";
+import { AdminSettings as AdminSettingsPanel } from "@/features/AdminSettings";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GradientHeader } from "@/components/GradientHeader";
 import { PressableScale } from "@/components/motion/PressableScale";
@@ -1109,113 +1109,8 @@ function DisputesSection() {
 
 /* ----------------------------- Settings ----------------------------- */
 
+// Settings tab — a scalable sub-navigation (Platform Features + per-module pages).
+// See src/features/AdminSettings.tsx.
 function SettingsSection() {
-  const [settings, setSettings] = useState<AdminSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const load = useCallback(() => {
-    setLoading(true);
-    setError("");
-    api
-      .get<AdminSettings>("/admin/settings")
-      .then(({ data }) => setSettings(data))
-      .catch(() => setError("Could not load settings."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Optimistic toggle: flip the UI immediately, revert on failure.
-  const toggleRewards = useCallback(
-    async (next: boolean) => {
-      if (!settings) return;
-      setSaving(true);
-      setError("");
-      setSettings({ ...settings, rewardsEnabled: next });
-      try {
-        await api.patch("/admin/settings/rewards", { enabled: next });
-      } catch (e: any) {
-        setSettings({ ...settings, rewardsEnabled: !next }); // revert
-        setError(e?.response?.data?.message || "Could not update the setting.");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [settings]
-  );
-
-  if (loading) return <LoadingState label="Loading settings…" />;
-  if (error && !settings) return <ErrorState description={error} onRetry={load} />;
-  if (!settings) return <EmptyState title="No settings" />;
-
-  return (
-    <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
-      {/* Platform Features — DB-backed feature flags (single source of truth). */}
-      <PlatformFeatures />
-
-      <View className="mt-6 mb-3 flex-row items-center gap-2">
-        <SettingsIcon size={16} color={ADMIN_COLORS.muted} />
-        <Text className="text-[15px] font-bold">Reward activation</Text>
-      </View>
-      <Card>
-        <View className="gap-4 p-5">
-          <View className="flex-row items-start justify-between gap-4">
-            <View className="min-w-0 flex-1 flex-row items-start gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-                <Award size={20} color={ADMIN_COLORS.green} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-[15px] font-bold">Reward points</Text>
-                <Text className="mt-0.5 text-[12.5px] text-muted-foreground">
-                  When on, users earn blockchain-backed reward points for every
-                  completed pickup and drop-off, and can see their balance and
-                  on-chain history. When off, the feature is hidden and no points
-                  are awarded.
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={settings.rewardsEnabled}
-              onValueChange={toggleRewards}
-              disabled={saving}
-            />
-          </View>
-
-          <View className="flex-row items-center gap-2 border-t border-border pt-3">
-            <View
-              className={
-                settings.rewardsEnabled
-                  ? "h-2 w-2 rounded-full bg-primary"
-                  : "h-2 w-2 rounded-full bg-muted-foreground/40"
-              }
-            />
-            <Text className="text-[12.5px] font-medium text-muted-foreground">
-              {settings.rewardsEnabled ? "Enabled" : "Disabled"}
-            </Text>
-          </View>
-
-          {!settings.rewardsConfigured ? (
-            <View className="flex-row items-start gap-2 rounded-xl bg-chart-3/10 px-3.5 py-3">
-              <AlertTriangle size={15} color={ADMIN_COLORS.amber} />
-              <Text className="flex-1 text-[12px] text-chart-3">
-                The rewards ledger isn't configured on the server
-                (REWARDS_LEDGER_URL / REWARDS_LEDGER_API_KEY). You can still flip
-                this switch, but no points will be awarded until it's set.
-              </Text>
-            </View>
-          ) : null}
-
-          {error ? (
-            <Text className="text-[12.5px] font-medium text-destructive">
-              {error}
-            </Text>
-          ) : null}
-        </View>
-      </Card>
-    </ScrollView>
-  );
+  return <AdminSettingsPanel />;
 }
