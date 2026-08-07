@@ -418,7 +418,10 @@ export default function DashboardScreen() {
         <View>
           <View className="mb-3 mt-8 flex-row items-center justify-between">
             <Text className="font-display text-[16px]">Recent activity</Text>
-            <Pressable onPress={() => router.push("/notifications" as any)} hitSlop={8}>
+            <Pressable
+              onPress={() => router.push((flags.activity ? "/activity" : "/notifications") as any)}
+              hitSlop={8}
+            >
               <Text className="text-[12.5px] font-semibold text-primary">See all</Text>
             </Pressable>
           </View>

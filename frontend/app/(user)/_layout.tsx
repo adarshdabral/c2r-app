@@ -31,6 +31,7 @@ export default function UserLayout() {
       <Stack.Screen name="drives" options={{ headerShown: false }} />
       <Stack.Screen name="reports" options={{ headerShown: false }} />
       <Stack.Screen name="assistant" options={{ headerShown: false }} />
+      <Stack.Screen name="activity" options={{ headerShown: false }} />
     </Stack>
   );
 }

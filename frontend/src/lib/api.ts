@@ -993,3 +993,23 @@ export const markAllNotificationsRead = () =>
 // Admin broadcast to all users (or one role).
 export const broadcastNotification = (payload: { title: string; body?: string; role?: string }) =>
   api.post<{ delivered: number }>("/notifications/admin/broadcast", payload).then((r) => r.data);
+
+/* ============================== ACTIVITY HISTORY ============================== */
+
+export type ActivityItem = {
+  source: "pickup" | "dropoff" | "reward" | "drive" | "chatbot" | string;
+  type: string;
+  title: string;
+  description: string | null;
+  refType: string | null;
+  refId: number | null;
+  at: string;
+};
+
+export const getActivity = (params?: { source?: string; search?: string; page?: number; limit?: number }) =>
+  api
+    .get<{ activity: ActivityItem[]; sources: string[]; meta: { total: number; page: number; limit: number } }>(
+      "/activity",
+      { params }
+    )
+    .then((r) => r.data);

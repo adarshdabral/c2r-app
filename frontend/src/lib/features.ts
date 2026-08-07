@@ -7,7 +7,13 @@ import { api } from "./api";
  * boot from the public GET /api/features so the UI can hide surfaces, skip nav
  * entries, and avoid calling disabled endpoints. Keys match the backend exactly.
  */
-export type FeatureKey = "personalization" | "rewards" | "chatbot";
+export type FeatureKey =
+  | "personalization"
+  | "rewards"
+  | "chatbot"
+  | "notifications"
+  | "activity"
+  | "analytics";
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -17,6 +23,9 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   personalization: true,
   rewards: true,
   chatbot: true,
+  notifications: true,
+  activity: true,
+  analytics: true,
 };
 
 export async function fetchFeatureFlags(): Promise<FeatureFlags> {
