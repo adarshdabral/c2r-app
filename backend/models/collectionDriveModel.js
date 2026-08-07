@@ -188,12 +188,19 @@ const cancelRsvp = async (driveId, userId) => {
 
 const listAttendees = async (driveId) => {
   const [rows] = await db.query(
-    `SELECT r.user_id, r.created_at, u.name, u.email
+    `SELECT r.user_id, r.created_at, r.checked_in_at, u.name, u.email
      FROM collection_drive_rsvps r JOIN users u ON u.id = r.user_id
      WHERE r.drive_id = ? AND r.status = 'GOING' ORDER BY r.created_at`,
     [driveId]
   );
-  return rows.map((r) => ({ userId: r.user_id, name: r.name, email: r.email, rsvpAt: r.created_at }));
+  return rows.map((r) => ({
+    userId: r.user_id,
+    name: r.name,
+    email: r.email,
+    rsvpAt: r.created_at,
+    checkedIn: !!r.checked_in_at,
+    checkedInAt: r.checked_in_at || null,
+  }));
 };
 
 const myDrives = async (userId) => {

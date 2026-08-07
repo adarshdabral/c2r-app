@@ -184,7 +184,32 @@ export type CollectionDrive = {
   createdAt: string;
 };
 
-export type DriveAttendee = { userId: number; name: string; email: string; rsvpAt: string };
+export type DriveAttendee = {
+  userId: number;
+  name: string;
+  email: string;
+  rsvpAt: string;
+  checkedIn?: boolean;
+  checkedInAt?: string | null;
+};
+
+export type DriveAnalytics = {
+  capacity: number | null;
+  going: number;
+  checkedIn: number;
+  cancelled: number;
+  attendanceRate: number;
+  capacityUsedPct: number | null;
+};
+
+export type HostingAnalytics = {
+  drives: number;
+  upcoming: number;
+  completed: number;
+  totalGoing: number;
+  totalCheckedIn: number;
+  avgAttendanceRate: number;
+};
 
 export type DriveInput = {
   title: string;
@@ -229,6 +254,23 @@ export const regenerateDriveReport = (id: number) =>
   api.post(`/collection-drives/${id}/report`).then((r) => r.data);
 
 // Path for the report file (host adds auth header / fetches it). format: pdf | xls
+// Drive attendance / QR check-in.
+export const getDriveMyQr = (id: number) =>
+  api
+    .get<{ token: string; qrDataUrl: string; checkedIn: boolean }>(`/collection-drives/${id}/my-qr`)
+    .then((r) => r.data);
+
+export const checkInDrive = (id: number, body: { token?: string; userId?: number }) =>
+  api
+    .post<{ checkedIn: boolean; alreadyCheckedIn: boolean }>(`/collection-drives/${id}/check-in`, body)
+    .then((r) => r.data);
+
+export const getDriveAnalytics = (id: number) =>
+  api.get<{ analytics: DriveAnalytics }>(`/collection-drives/${id}/analytics`).then((r) => r.data.analytics);
+
+export const getHostingAnalytics = () =>
+  api.get<{ analytics: HostingAnalytics }>("/collection-drives/hosting/analytics").then((r) => r.data.analytics);
+
 export const driveReportDownloadPath = (id: number, format: "pdf" | "xls") =>
   `/collection-drives/${id}/report/download?format=${format}`;
 

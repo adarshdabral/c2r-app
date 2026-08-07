@@ -10,9 +10,11 @@ import {
   cancelDriveRsvp,
   type CollectionDrive,
 } from "@/lib/api";
-import { Text, LoadingState, EmptyState } from "@/components/ui";
+import { QrCode } from "lucide-react-native";
+import { Text, LoadingState, EmptyState, Button } from "@/components/ui";
 import { GradientHeader } from "@/components/GradientHeader";
 import { DriveCard } from "@/components/drives/DriveCard";
+import { DriveQrModal } from "@/components/drives/DriveQrModal";
 import { DOMAIN } from "@/lib/domains";
 import { useLocation } from "@/hooks/useLocation";
 
@@ -25,6 +27,7 @@ export default function DrivesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [qrDrive, setQrDrive] = useState<CollectionDrive | null>(null);
 
   useEffect(() => {
     request();
@@ -119,7 +122,14 @@ export default function DrivesScreen() {
             data={drives}
             keyExtractor={(d) => String(d.id)}
             renderItem={({ item }) => (
-              <DriveCard drive={item} busy={busyId === item.id} onRsvp={() => toggleRsvp(item)} onCancel={() => toggleRsvp(item)} />
+              <DriveCard drive={item} busy={busyId === item.id} onRsvp={() => toggleRsvp(item)} onCancel={() => toggleRsvp(item)}>
+                {item.myRsvp === "GOING" && item.status !== "COMPLETED" && item.status !== "CANCELLED" ? (
+                  <Button size="sm" variant="outline" onPress={() => setQrDrive(item)} className="mt-2 flex-row gap-1.5">
+                    <QrCode size={15} color="#7c3aed" />
+                    <Text className="text-[13px] font-semibold text-foreground">Show check-in QR</Text>
+                  </Button>
+                ) : null}
+              </DriveCard>
             )}
             contentContainerStyle={{ paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
@@ -127,6 +137,15 @@ export default function DrivesScreen() {
           />
         )}
       </View>
+
+      {qrDrive ? (
+        <DriveQrModal
+          driveId={qrDrive.id}
+          driveTitle={qrDrive.title}
+          open={!!qrDrive}
+          onClose={() => setQrDrive(null)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

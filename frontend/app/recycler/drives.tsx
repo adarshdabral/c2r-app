@@ -3,7 +3,7 @@ import { Platform, Pressable, RefreshControl, ScrollView, View } from "react-nat
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
-import { CalendarHeart, Download, FileSpreadsheet, LocateFixed, Plus } from "lucide-react-native";
+import { CalendarHeart, Download, FileSpreadsheet, LocateFixed, Plus, Users } from "lucide-react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import Toast from "react-native-toast-message";
@@ -20,6 +20,7 @@ import { Text, Surface, Button, Input, Field, LoadingState, EmptyState } from "@
 import { GradientHeader } from "@/components/GradientHeader";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { DriveCard } from "@/components/drives/DriveCard";
+import { DriveAttendanceModal } from "@/components/drives/DriveAttendanceModal";
 import { DOMAIN } from "@/lib/domains";
 import { useColors } from "@/lib/theme";
 import { useLocation } from "@/hooks/useLocation";
@@ -31,6 +32,7 @@ export default function RecyclerDrivesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [attendanceDrive, setAttendanceDrive] = useState<{ id: number; title: string } | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   // form
@@ -253,6 +255,10 @@ export default function RecyclerDrivesScreen() {
                   <Button size="sm" variant="outline" loading={busyId === d.id} onPress={() => changeStatus(d.id, "CANCELLED")}>
                     <Text className="text-[13px] font-semibold text-destructive">Cancel</Text>
                   </Button>
+                  <Button size="sm" variant="outline" onPress={() => setAttendanceDrive({ id: d.id, title: d.title })} className="flex-row gap-1.5">
+                    <Users size={14} color={c.foreground} />
+                    <Text className="text-[13px] font-semibold">Attendance</Text>
+                  </Button>
                 </View>
               ) : d.status === "COMPLETED" ? (
                 <View className="gap-2">
@@ -273,6 +279,15 @@ export default function RecyclerDrivesScreen() {
           ))
         )}
       </View>
+
+      {attendanceDrive ? (
+        <DriveAttendanceModal
+          driveId={attendanceDrive.id}
+          driveTitle={attendanceDrive.title}
+          open={!!attendanceDrive}
+          onClose={() => setAttendanceDrive(null)}
+        />
+      ) : null}
     </SafeAreaScroll>
   );
 }

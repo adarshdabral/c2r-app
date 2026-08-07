@@ -967,6 +967,9 @@ const createTables = async () => {
     )
   `);
 
+  // Drive attendance (check-in) — additive column on the existing rsvps table.
+  await ensureColumn('collection_drive_rsvps', 'checked_in_at', 'DATETIME NULL');
+
   await seedEwasteTaxonomy();
   await seedRewardConfig();
 

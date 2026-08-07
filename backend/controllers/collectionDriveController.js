@@ -5,6 +5,9 @@ const driveReportService = require('../services/driveReportService');
 const driveReportModel = require('../models/collectionDriveReportModel');
 const rewardEngine = require('../services/rewardEngine');
 const notificationService = require('../services/notificationService');
+const attendance = require('../models/driveAttendanceModel');
+const { makeToken, verifyToken } = require('../utils/driveQr');
+const QRCode = require('qrcode');
 
 const parseId = (raw, label = 'drive id') => {
   const id = Number(raw);
@@ -139,7 +142,70 @@ const attendees = asyncHandler(async (req, res) => {
   res.json({ attendees: await drives.listAttendees(id) });
 });
 
+/* ============================ ATTENDANCE / QR ============================ */
+
+// GET /:id/my-qr (user) — the attendee's stateless check-in token + a QR image.
+const myQr = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id);
+  const rsvp = await attendance.getRsvp(id, req.user.id);
+  if (!rsvp || rsvp.status !== 'GOING') {
+    throw ApiError.badRequest('RSVP to this drive before getting a check-in code');
+  }
+  const token = makeToken(id, req.user.id);
+  const qrDataUrl = await QRCode.toDataURL(token, { margin: 1, width: 240 });
+  res.json({ token, qrDataUrl, checkedIn: !!rsvp.checkedInAt });
+});
+
+// POST /:id/check-in (host | admin) — body { token } or { userId }. Marks the
+// attendee checked-in.
+const checkIn = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id);
+  await assertHost(id, req.user);
+
+  let userId;
+  if (req.body.token) {
+    const decoded = verifyToken(String(req.body.token));
+    if (!decoded || decoded.driveId !== id) throw ApiError.badRequest('Invalid or mismatched check-in code');
+    userId = decoded.userId;
+  } else if (req.body.userId) {
+    userId = Number(req.body.userId);
+    if (!Number.isInteger(userId) || userId <= 0) throw ApiError.badRequest('Valid userId is required');
+  } else {
+    throw ApiError.badRequest('token or userId is required');
+  }
+
+  const rsvp = await attendance.getRsvp(id, userId);
+  if (!rsvp || rsvp.status !== 'GOING') throw ApiError.badRequest('That user has not RSVP\'d to this drive');
+
+  const newly = await attendance.checkIn(id, userId);
+  if (newly) {
+    const drive = await drives.getById(id);
+    notificationService.notifySafe({
+      userId,
+      category: 'drive',
+      type: 'drive_checked_in',
+      title: `Checked in to ${drive.title}`,
+      body: 'Enjoy the drive — thanks for recycling!',
+      data: { href: '/drives', refType: 'drive', refId: id },
+    });
+  }
+  res.json({ checkedIn: true, alreadyCheckedIn: !newly });
+});
+
+// GET /:id/analytics (host | admin) — per-drive attendance analytics.
+const driveAnalytics = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id);
+  await assertHost(id, req.user);
+  res.json({ analytics: await attendance.driveAnalytics(id) });
+});
+
+// GET /hosting/analytics (recycler | admin) — aggregate across the host's drives.
+const hostingAnalytics = asyncHandler(async (req, res) => {
+  res.json({ analytics: await attendance.hostingAnalytics(req.user.id) });
+});
+
 module.exports = {
   create, list, mine, hosting, getOne, setStatus, rsvp, cancelRsvp, attendees,
   generateReport, getReport, downloadReport,
+  myQr, checkIn, driveAnalytics, hostingAnalytics,
 };
