@@ -23,6 +23,7 @@ import {
   type SelectOption,
 } from "@/components/ui";
 import { useLocation } from "@/hooks/useLocation";
+import { useColors } from "@/lib/theme";
 
 // Unified shape used for both the nearest-store list and a pre-selected store.
 type SelectableStore = {
@@ -38,6 +39,7 @@ type SelectableStore = {
 
 export default function BookingScreen() {
   const router = useRouter();
+  const c = useColors();
   const { storeId: storeIdParam } = useLocalSearchParams<{ storeId?: string }>();
   const { request: requestLocation } = useLocation();
 
@@ -196,7 +198,7 @@ export default function BookingScreen() {
         <View className="gap-5 px-5 pb-10 pt-4">
           {/* HEADER */}
           <View>
-            <Text className="text-[24px] font-extrabold tracking-tight">
+            <Text variant="h1">
               Book Pickup
             </Text>
             <Text className="mt-1 text-[13px] text-muted-foreground">
@@ -240,7 +242,7 @@ export default function BookingScreen() {
                         ) : null}
                       </View>
                       <View className="mt-1 flex-row items-center gap-1.5">
-                        <Navigation size={12} color="#6c7278" />
+                        <Navigation size={12} color={c.mutedForeground} />
                         <Text className="text-[12px] text-muted-foreground">
                           {s.distanceKm ?? 0} km
                         </Text>
@@ -298,7 +300,7 @@ export default function BookingScreen() {
           {/* DATE & TIME */}
           <Surface className="gap-4 p-5">
             <View className="flex-row items-center gap-1.5">
-              <CalendarClock size={16} color="#34c759" />
+              <CalendarClock size={16} color={c.primary} />
               <Text className="text-[15px] font-bold">
                 When should we collect?
               </Text>
@@ -413,11 +415,12 @@ function Row({
   value: string;
   icon?: boolean;
 }) {
+  const c = useColors();
   return (
     <View className="flex-row items-center justify-between gap-3">
       <Text className="text-[13.5px] text-muted-foreground">{label}</Text>
       <View className="flex-1 flex-row items-center justify-end gap-1">
-        {icon ? <MapPin size={12} color="#6c7278" /> : null}
+        {icon ? <MapPin size={12} color={c.mutedForeground} /> : null}
         <Text className="text-right text-[13.5px] font-medium" numberOfLines={1}>
           {value}
         </Text>

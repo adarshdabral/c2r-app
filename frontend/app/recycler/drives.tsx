@@ -18,11 +18,14 @@ import {
 import { getToken } from "@/lib/auth";
 import { Text, Surface, Button, Input, Field, LoadingState, EmptyState } from "@/components/ui";
 import { GradientHeader } from "@/components/GradientHeader";
+import { PressableScale } from "@/components/motion/PressableScale";
 import { DriveCard } from "@/components/drives/DriveCard";
 import { DOMAIN } from "@/lib/domains";
+import { useColors } from "@/lib/theme";
 import { useLocation } from "@/hooks/useLocation";
 
 export default function RecyclerDrivesScreen() {
+  const c = useColors();
   const { coords, request } = useLocation();
   const [drives, setDrives] = useState<CollectionDrive[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,12 +156,15 @@ export default function RecyclerDrivesScreen() {
         colors={DOMAIN.drives}
         icon={CalendarHeart}
         right={
-          <Pressable onPress={() => setShowForm((v) => !v)} className="active:opacity-80">
+          <PressableScale
+            onPress={() => setShowForm((v) => !v)}
+            accessibilityLabel={showForm ? "Close new drive form" : "New drive"}
+          >
             <View className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-3 py-2">
               <Plus size={15} color="#fff" />
               <Text className="text-[12.5px] font-semibold text-white">New</Text>
             </View>
-          </Pressable>
+          </PressableScale>
         }
       />
 
@@ -206,7 +212,7 @@ export default function RecyclerDrivesScreen() {
             <Input placeholder="Laptops, Batteries, Phones" value={categories} onChangeText={setCategories} />
           </Field>
           <Button variant="outline" onPress={attachLocation} className="flex-row gap-1.5">
-            <LocateFixed size={15} color="#14181a" />
+            <LocateFixed size={15} color={c.foreground} />
             <Text className="text-[13px] font-semibold">
               {pin ? "Location attached ✓" : "Attach my location (for distance)"}
             </Text>
@@ -257,7 +263,7 @@ export default function RecyclerDrivesScreen() {
                       <Text className="text-[13px] font-semibold text-primary-foreground">PDF</Text>
                     </Button>
                     <Button size="sm" variant="outline" onPress={() => downloadReport(d.id, "xls")} className="flex-row gap-1.5">
-                      <FileSpreadsheet size={14} color="#14181a" />
+                      <FileSpreadsheet size={14} color={c.foreground} />
                       <Text className="text-[13px] font-semibold">Excel</Text>
                     </Button>
                   </View>

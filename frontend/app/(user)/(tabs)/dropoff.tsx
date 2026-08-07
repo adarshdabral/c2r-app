@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,12 +35,13 @@ import {
   Switch,
   LoadingState,
   ErrorState,
-  type SelectOption,
 } from "@/components/ui";
 import { CategoryAppliancePicker } from "@/components/booking/CategoryAppliancePicker";
 import { ImageUploader } from "@/components/booking/ImageUploader";
 import { ShieldCheck } from "lucide-react-native";
 import { CategoryMultiSelect } from "@/components/CategoryMultiSelect";
+import { SLOT_OPTIONS } from "@/lib/constants";
+import { useColors } from "@/lib/theme";
 import { useLocation } from "@/hooks/useLocation";
 
 type SelectableStore = {
@@ -47,22 +54,9 @@ type SelectableStore = {
   distanceKm?: number;
 };
 
-// Fixed drop-off slots — the backend stores the slot as a free-form label.
-const TIME_SLOTS = [
-  "09:00 - 11:00",
-  "11:00 - 13:00",
-  "13:00 - 15:00",
-  "15:00 - 17:00",
-  "17:00 - 19:00",
-];
-
-const SLOT_OPTIONS: SelectOption[] = TIME_SLOTS.map((s) => ({
-  value: s,
-  label: s,
-}));
-
 export default function UserDropoffScreen() {
   const router = useRouter();
+  const c = useColors();
   const { storeId: storeIdParam } = useLocalSearchParams<{ storeId?: string }>();
   const { request: requestLocation } = useLocation();
 
@@ -211,7 +205,7 @@ export default function UserDropoffScreen() {
         <View className="flex-1 justify-center px-5">
           <Surface className="items-center gap-4 px-6 py-16">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/[0.12]">
-              <CheckCircle2 size={32} color="#34c759" strokeWidth={2.2} />
+              <CheckCircle2 size={32} color={c.primary} strokeWidth={2.2} />
             </View>
             <View className="items-center">
               <Text className="font-display text-[21px] tracking-tight">
@@ -241,6 +235,10 @@ export default function UserDropoffScreen() {
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -294,7 +292,7 @@ export default function UserDropoffScreen() {
                         ) : null}
                       </View>
                       <View className="mt-1 flex-row items-center gap-1.5">
-                        <Navigation size={12} color="#34c759" />
+                        <Navigation size={12} color={c.primary} />
                         <Text className="text-[12px] text-muted-foreground">
                           {s.distanceKm ?? 0} km
                         </Text>
@@ -362,7 +360,7 @@ export default function UserDropoffScreen() {
         {/* Data sanitization certificate */}
         <Surface className="flex-row items-center gap-3 p-5">
           <View className="h-10 w-10 items-center justify-center rounded-2xl bg-accent">
-            <ShieldCheck size={20} color="#1f6b38" />
+            <ShieldCheck size={20} color={c.accentForeground} />
           </View>
           <View className="min-w-0 flex-1">
             <Text className="text-[14px] font-bold">Data sanitization certificate</Text>
@@ -376,7 +374,7 @@ export default function UserDropoffScreen() {
         {/* DATE + TIME SLOT */}
         <Surface className="gap-4 p-5">
           <View className="flex-row items-center gap-1.5">
-            <Clock size={16} color="#34c759" />
+            <Clock size={16} color={c.primary} />
             <Text className="text-[15px] font-bold">When works for you?</Text>
           </View>
           <Field label="Date">
@@ -459,6 +457,7 @@ export default function UserDropoffScreen() {
         </Button>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

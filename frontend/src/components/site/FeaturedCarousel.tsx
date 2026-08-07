@@ -48,7 +48,12 @@ export function FeaturedCarousel() {
             if (it.linkUrl) Linking.openURL(it.linkUrl).catch(() => {});
           };
           return (
-            <PressableScale key={it.id} onPress={open} disabled={!it.linkUrl}>
+            <PressableScale
+              key={it.id}
+              onPress={open}
+              disabled={!it.linkUrl}
+              accessibilityLabel={it.title || "Featured item"}
+            >
               <View
                 style={{ width: cardW }}
                 className="overflow-hidden rounded-3xl bg-card shadow-clay-sm"

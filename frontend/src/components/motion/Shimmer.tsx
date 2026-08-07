@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useColors } from "@/lib/theme";
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -25,14 +27,18 @@ export function Shimmer({
 }) {
   const [w, setW] = useState(0);
   const x = useSharedValue(0);
+  const reduced = useReducedMotion();
+  const c = useColors();
 
   useEffect(() => {
+    // Reduce motion → a static muted block (no sweeping band).
+    if (reduced) return;
     x.value = withRepeat(
       withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
       -1,
       false
     );
-  }, [x]);
+  }, [reduced, x]);
 
   const band = useAnimatedStyle(() => ({
     transform: [{ translateX: -w + x.value * (2 * w) }],
@@ -43,7 +49,7 @@ export function Shimmer({
       className={className}
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
       style={[
-        { borderRadius: radius, overflow: "hidden", backgroundColor: "rgba(20,24,26,0.06)" },
+        { borderRadius: radius, overflow: "hidden", backgroundColor: c.scrim },
         style,
       ]}
     >

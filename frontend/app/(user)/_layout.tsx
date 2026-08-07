@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { useColors } from "@/lib/theme";
 
 /**
  * User area stack. The (tabs) group holds the bottom-tab screens; detail
@@ -6,14 +7,15 @@ import { Stack } from "expo-router";
  * with a header + back button.
  */
 export default function UserLayout() {
+  const c = useColors();
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#eef1ee" },
-        headerStyle: { backgroundColor: "#eef1ee" },
+        contentStyle: { backgroundColor: c.background },
+        headerStyle: { backgroundColor: c.background },
         headerShadowVisible: false,
-        headerTintColor: "#14181a",
+        headerTintColor: c.foreground,
         // Editorial serif on every pushed-screen header (Store, Schedule
         // Pickup, My Drop-offs, My Rewards, Notifications).
         headerTitleStyle: { fontFamily: "Fraunces_700Bold", fontSize: 18 },

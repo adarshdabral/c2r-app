@@ -15,6 +15,7 @@ import Fraunces_700Bold from "@expo-google-fonts/fraunces/700Bold/Fraunces_700Bo
 import Fraunces_900Black from "@expo-google-fonts/fraunces/900Black/Fraunces_900Black.ttf";
 import { AuthProvider, useAuth, homeRouteFor } from "@/context/AuthContext";
 import { LoadingState } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 
 // Route groups that are reachable without a session.
 const PUBLIC_GROUPS = ["(auth)"];
@@ -64,6 +65,7 @@ function useProtectedRoute() {
 
 function RootNavigator() {
   const { loading } = useAuth();
+  const c = useColors();
   useProtectedRoute();
 
   if (loading) {
@@ -75,7 +77,7 @@ function RootNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#eef1ee" } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.background } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(user)" />
@@ -102,7 +104,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="auto" />
           <RootNavigator />
           <Toast />
         </AuthProvider>

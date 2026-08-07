@@ -3,6 +3,7 @@ import { Image, Pressable, View } from "react-native";
 import { Camera, ImagePlus, X } from "lucide-react-native";
 import { Text } from "@/components/ui";
 import { PressableScale } from "@/components/motion/PressableScale";
+import { useColors } from "@/lib/theme";
 import { pickImages, takePhoto } from "@/lib/imagePicker";
 
 /**
@@ -20,6 +21,7 @@ export function ImageUploader({
   max?: number;
   hint?: string;
 }) {
+  const c = useColors();
   const [busy, setBusy] = useState(false);
   const full = images.length >= max;
 
@@ -47,18 +49,22 @@ export function ImageUploader({
               (full ? "border-border opacity-50" : "border-primary/40 bg-primary/[0.06]")
             }
           >
-            <ImagePlus size={18} color="#1f6b38" />
+            <ImagePlus size={18} color={c.accentForeground} />
             <Text className="text-[13px] font-semibold text-primary">Add photos</Text>
           </View>
         </PressableScale>
-        <PressableScale onPress={() => add("camera")} disabled={full || busy}>
+        <PressableScale
+          onPress={() => add("camera")}
+          disabled={full || busy}
+          accessibilityLabel="Take photo"
+        >
           <View
             className={
               "h-[46px] w-[46px] items-center justify-center rounded-2xl border " +
               (full ? "border-border opacity-50" : "border-input bg-card")
             }
           >
-            <Camera size={18} color="#14181a" />
+            <Camera size={18} color={c.foreground} />
           </View>
         </PressableScale>
       </View>
@@ -71,6 +77,8 @@ export function ImageUploader({
               <Pressable
                 onPress={() => remove(idx)}
                 hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
                 className="absolute right-1 top-1 h-5 w-5 items-center justify-center rounded-full bg-black/60"
               >
                 <X size={12} color="#fff" />

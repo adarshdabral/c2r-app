@@ -3,6 +3,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -33,12 +34,15 @@ export function Floaty({
   pointerEvents?: "none" | "auto" | "box-none" | "box-only";
 }) {
   const t = useSharedValue(0);
+  const reduced = useReducedMotion();
   useEffect(() => {
+    // Respect the OS "reduce motion" setting — sit at rest, no infinite loop.
+    if (reduced) return;
     t.value = withDelay(
       delay,
       withRepeat(withTiming(1, { duration, easing: Easing.inOut(Easing.ease) }), -1, true)
     );
-  }, [delay, duration, t]);
+  }, [delay, duration, reduced, t]);
 
   const aStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -t.value * amplitude }, { translateX: t.value * drift }],
@@ -72,12 +76,18 @@ export function Pulse({
   pointerEvents?: "none" | "auto" | "box-none" | "box-only";
 }) {
   const t = useSharedValue(0);
+  const reduced = useReducedMotion();
   useEffect(() => {
+    if (reduced) {
+      // Settle on a stable, fully-visible resting state (no breathing).
+      t.value = 1;
+      return;
+    }
     t.value = withDelay(
       delay,
       withRepeat(withTiming(1, { duration, easing: Easing.inOut(Easing.ease) }), -1, true)
     );
-  }, [delay, duration, t]);
+  }, [delay, duration, reduced, t]);
 
   const aStyle = useAnimatedStyle(() => {
     const scale = from + (to - from) * t.value;

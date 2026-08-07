@@ -2,6 +2,7 @@ import { Modal, Pressable, View } from "react-native";
 import { X } from "lucide-react-native";
 import { Text } from "./Text";
 import { cn } from "@/lib/utils";
+import { useColors } from "@/lib/theme";
 
 /**
  * Centered modal dialog. Mirrors shadcn Dialog usage: controlled `open` +
@@ -24,6 +25,7 @@ export function Dialog({
   children?: React.ReactNode;
   dismissable?: boolean;
 }) {
+  const c = useColors();
   return (
     <Modal
       visible={open}
@@ -45,19 +47,25 @@ export function Dialog({
             <View className="mb-2 flex-row items-start justify-between">
               <View className="flex-1 pr-2">
                 {title ? (
-                  <Text className="text-[18px] font-bold text-foreground">
+                  <Text variant="h3" className="font-bold">
                     {title}
                   </Text>
                 ) : null}
                 {description ? (
-                  <Text className="mt-1 text-[13px] text-muted-foreground">
+                  <Text variant="label" className="mt-1 text-muted-foreground">
                     {description}
                   </Text>
                 ) : null}
               </View>
               {dismissable ? (
-                <Pressable onPress={onClose} hitSlop={8} className="p-1">
-                  <X size={20} color="#6c7278" />
+                <Pressable
+                  onPress={onClose}
+                  hitSlop={8}
+                  className="p-1"
+                  accessibilityRole="button"
+                  accessibilityLabel="Close dialog"
+                >
+                  <X size={20} color={c.mutedForeground} />
                 </Pressable>
               ) : null}
             </View>

@@ -15,6 +15,7 @@ import { Text, Surface, Button, LoadingState, EmptyState } from "@/components/ui
 import { GradientHeader } from "@/components/GradientHeader";
 import { DOMAIN } from "@/lib/domains";
 import { getToken } from "@/lib/auth";
+import { useColors } from "@/lib/theme";
 
 const PERIODS: { key: "monthly" | "quarterly" | "annual"; label: string }[] = [
   { key: "monthly", label: "Monthly" },
@@ -166,9 +167,10 @@ function ReportCard({ report, onDownload }: { report: ImpactReport; onDownload: 
 }
 
 function Metric({ icon: Icon, label, value }: { icon: typeof Leaf; label: string; value: string }) {
+  const c = useColors();
   return (
     <View className="min-w-[46%] grow flex-row items-center gap-2 rounded-xl bg-muted px-3 py-2.5">
-      <Icon size={15} color="#1f6b38" />
+      <Icon size={15} color={c.accentForeground} />
       <View>
         <Text className="text-[10px] text-muted-foreground">{label}</Text>
         <Text className="font-display text-[14px]">{value}</Text>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { format } from "date-fns";
@@ -27,7 +27,6 @@ import {
   Surface,
   Select,
   Switch,
-  type SelectOption,
 } from "@/components/ui";
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { CategoryMultiSelect } from "@/components/CategoryMultiSelect";
@@ -36,36 +35,14 @@ import { ImageUploader } from "@/components/booking/ImageUploader";
 import { ShieldCheck } from "lucide-react-native";
 import { useLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/geocode";
-
-const WASTE_TYPES: WasteType[] = [
-  "Waste Batteries",
-  "PCB Scrap",
-  "Mobile Phone Scrap",
-  "Laptop Scrap",
-  "Computer Scrap",
-  "Hard Drive Scrap",
-  "IT Equipment Scrap",
-  "Telecom Equipment Scrap",
-  "Display Panel Scrap",
-];
-
-const TIME_SLOTS = [
-  "09:00 - 11:00",
-  "11:00 - 13:00",
-  "13:00 - 15:00",
-  "15:00 - 17:00",
-  "17:00 - 19:00",
-];
-
-const SLOT_OPTIONS: SelectOption[] = [
-  { value: "", label: "No preference" },
-  ...TIME_SLOTS.map((s) => ({ value: s, label: s })),
-];
+import { useColors } from "@/lib/theme";
+import { WASTE_TYPES, SLOT_OPTIONS_OPTIONAL } from "@/lib/constants";
 
 type LatLng = { lat: number; lng: number };
 
 export default function NewPickupScreen() {
   const router = useRouter();
+  const c = useColors();
   const { coords: userLocation, request: requestLocation } = useLocation();
 
   const [wasteCategories, setWasteCategories] = useState<WasteType[]>([]);
@@ -205,7 +182,7 @@ export default function NewPickupScreen() {
       <Screen contentClassName="py-6">
         <Surface className="items-center gap-4 px-6 py-16">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/[0.12]">
-            <CheckCircle2 size={32} color="#34c759" strokeWidth={2.2} />
+            <CheckCircle2 size={32} color={c.primary} strokeWidth={2.2} />
           </View>
           <View className="items-center">
             <Text className="text-[20px] font-extrabold tracking-tight">
@@ -233,9 +210,13 @@ export default function NewPickupScreen() {
   }
 
   return (
+    <KeyboardAvoidingView
+      className="flex-1"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
     <Screen contentClassName="gap-5 py-6">
       <View>
-        <Text className="font-display text-[25px] tracking-tight">
+        <Text variant="h1">
           Request a pickup
         </Text>
         <Text className="mt-1 text-[13px] text-muted-foreground">
@@ -247,7 +228,7 @@ export default function NewPickupScreen() {
       {/* Auto-assignment notice (no store selection) */}
       <Surface className="flex-row items-start gap-3 bg-primary/[0.05] p-4">
         <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-xl bg-primary/[0.12]">
-          <Info size={16} color="#34c759" />
+          <Info size={16} color={c.primary} />
         </View>
         <Text className="flex-1 text-[13px] leading-relaxed text-muted-foreground">
           No need to choose a store — our system assigns the most suitable one
@@ -299,7 +280,7 @@ export default function NewPickupScreen() {
       {/* Data sanitization certificate */}
       <Surface className="flex-row items-center gap-3 p-5">
         <View className="h-10 w-10 items-center justify-center rounded-2xl bg-accent">
-          <ShieldCheck size={20} color="#1f6b38" />
+          <ShieldCheck size={20} color={c.accentForeground} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-[14px] font-bold">Data sanitization certificate</Text>
@@ -313,7 +294,7 @@ export default function NewPickupScreen() {
       {/* PREFERRED TIME SLOTS — propose one, the recycler confirms */}
       <Surface className="gap-3 p-5">
         <View className="flex-row items-center gap-1.5">
-          <Clock size={16} color="#34c759" />
+          <Clock size={16} color={c.primary} />
           <Text className="text-[15px] font-bold">Preferred slot</Text>
           <Text className="text-[12px] font-medium text-muted-foreground">
             (optional)
@@ -356,7 +337,7 @@ export default function NewPickupScreen() {
           <Select
             value={slotWindow}
             onValueChange={setSlotWindow}
-            options={SLOT_OPTIONS}
+            options={SLOT_OPTIONS_OPTIONAL}
             placeholder="No preference"
           />
         </Field>
@@ -365,7 +346,7 @@ export default function NewPickupScreen() {
       {/* LOCATION — saved addresses first, map pin as fallback */}
       <Surface className="gap-3 p-5">
         <View className="flex-row items-center gap-1.5">
-          <MapPin size={16} color="#34c759" />
+          <MapPin size={16} color={c.primary} />
           <Text className="text-[15px] font-bold">Pickup location</Text>
         </View>
 
@@ -423,7 +404,7 @@ export default function NewPickupScreen() {
             </View>
             {typeof selected === "number" ? (
               <View className="flex-row items-start gap-1.5">
-                <MapPin size={14} color="#34c759" className="mt-0.5" />
+                <MapPin size={14} color={c.primary} className="mt-0.5" />
                 <Text className="flex-1 text-[12.5px] text-muted-foreground">
                   {addresses.find((a) => a.id === selected)?.address}
                 </Text>
@@ -456,7 +437,7 @@ export default function NewPickupScreen() {
                 loading={locating}
                 className="flex-row gap-1.5"
               >
-                <LocateFixed size={14} color="#14181a" />
+                <LocateFixed size={14} color={c.foreground} />
                 <Text className="text-[13px] font-semibold">My location</Text>
               </Button>
             </View>
@@ -500,5 +481,6 @@ export default function NewPickupScreen() {
         </Text>
       </Button>
     </Screen>
+    </KeyboardAvoidingView>
   );
 }

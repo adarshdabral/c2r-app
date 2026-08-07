@@ -22,6 +22,7 @@ import {
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { Screen, Text, Surface } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 import { api, type RewardsSummary, type AuthProfile } from "@/lib/api";
 import {
@@ -59,11 +60,11 @@ const COMPACT_ACTIONS = [
   { icon: CalendarHeart, label: "Events", href: "/drives", colors: ["#7c3aed", "#a855f7"] },
 ] as const;
 
-const TONE_ICON: Record<NotificationTone, { icon: LucideIcon; color: string; bg: string }> = {
-  success: { icon: CheckCircle2, color: "#1f6b38", bg: "bg-primary/[0.12]" },
-  action: { icon: KeyRound, color: "#9a5b00", bg: "bg-chart-3/15" },
-  info: { icon: Truck, color: "#2563eb", bg: "bg-accent" },
-  muted: { icon: Clock, color: "#6c7278", bg: "bg-muted" },
+const TONE_ICON: Record<NotificationTone, { icon: LucideIcon; bg: string }> = {
+  success: { icon: CheckCircle2, bg: "bg-primary/[0.12]" },
+  action: { icon: KeyRound, bg: "bg-chart-3/15" },
+  info: { icon: Truck, bg: "bg-accent" },
+  muted: { icon: Clock, bg: "bg-muted" },
 };
 
 const rel = (iso: string) => {
@@ -73,7 +74,16 @@ const rel = (iso: string) => {
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const c = useColors();
   const { role, userType } = useAuth();
+
+  // Notification-icon colors that need theme awareness (others are brand hues).
+  const toneColor: Record<NotificationTone, string> = {
+    success: c.accentForeground,
+    action: "#9a5b00",
+    info: "#2563eb",
+    muted: c.mutedForeground,
+  };
 
   const [firstName, setFirstName] = useState("");
   const [rewards, setRewards] = useState<RewardsSummary | null>(null);
@@ -147,7 +157,7 @@ export default function DashboardScreen() {
       <Animated.View entering={FadeIn.duration(450)}>
         <View className="flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="font-display text-[27px] leading-[32px] tracking-tight" numberOfLines={1}>
+            <Text variant="h1" className="tracking-tight" numberOfLines={1}>
               {greeting}
             </Text>
             <Text className="mt-1 text-[13.5px] text-muted-foreground">{subheading}</Text>
@@ -157,6 +167,7 @@ export default function DashboardScreen() {
               onPress={() => router.push("/assistant" as any)}
               hitSlop={8}
               className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
+              accessibilityRole="button"
               accessibilityLabel="Assistant"
             >
               <Sparkles size={20} color="#0d9488" />
@@ -165,9 +176,10 @@ export default function DashboardScreen() {
               onPress={() => router.push("/notifications" as any)}
               hitSlop={8}
               className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
+              accessibilityRole="button"
               accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
             >
-              <Bell size={21} color="#14181a" />
+              <Bell size={21} color={c.foreground} />
               {unread > 0 ? (
                 <View className="absolute -right-0.5 -top-0.5 h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1">
                   <Text className="text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</Text>
@@ -400,7 +412,7 @@ export default function DashboardScreen() {
                   <PressableScale onPress={() => router.push(n.href as any)}>
                     <Surface variant="inset" className="flex-row items-center gap-3 p-3.5">
                       <View className={`h-9 w-9 items-center justify-center rounded-full ${t.bg}`}>
-                        <Icon size={16} color={t.color} />
+                        <Icon size={16} color={toneColor[n.tone]} />
                       </View>
                       <View className="min-w-0 flex-1">
                         <Text className="text-[13px] font-semibold" numberOfLines={1}>

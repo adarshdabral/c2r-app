@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Check, ChevronDown } from "lucide-react-native";
 import { Text, Surface, LoadingState } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import {
   getEwasteCategories,
   type EwasteCategory,
@@ -21,6 +22,7 @@ export function CategoryAppliancePicker({
   value: RequestItemSelection[];
   onChange: (next: RequestItemSelection[]) => void;
 }) {
+  const c = useColors();
   const [categories, setCategories] = useState<EwasteCategory[] | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [error, setError] = useState(false);
@@ -80,7 +82,7 @@ export function CategoryAppliancePicker({
               ) : null}
               <ChevronDown
                 size={18}
-                color="#6c7278"
+                color={c.mutedForeground}
                 style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}
               />
             </Pressable>
@@ -97,7 +99,7 @@ export function CategoryAppliancePicker({
                         (on ? "border-primary bg-primary/[0.12]" : "border-input bg-card")
                       }
                     >
-                      {on ? <Check size={13} color="#1f6b38" /> : null}
+                      {on ? <Check size={13} color={c.accentForeground} /> : null}
                       <Text className={"text-[12.5px] font-medium " + (on ? "text-primary" : "text-muted-foreground")}>
                         {it.name}
                       </Text>

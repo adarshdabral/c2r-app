@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   AlertCircle,
   Bell,
@@ -25,6 +26,7 @@ import {
   LoadingState,
 } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
+import { useColors } from "@/lib/theme";
 import { USER_TYPE_LABELS, isUserType } from "@/lib/userTypes";
 import { SavedAddresses } from "@/features/SavedAddresses";
 import { fetchImpact, ecoLevel, type Impact } from "@/lib/impact";
@@ -42,11 +44,15 @@ type Accent = (typeof ACCENTS)[number];
 
 type TabKey = "account" | "security" | "addresses" | "notifications";
 
+const ACCENT_KEY = "ctr:profile-accent";
+
 export function ProfileScreen() {
   const { signOut } = useAuth();
+  const c = useColors();
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [tab, setTab] = useState<TabKey>("account");
   const [accent, setAccent] = useState<Accent>(ACCENTS[0]);
+  const accentHydrated = useRef(false);
 
   useEffect(() => {
     api
@@ -54,6 +60,23 @@ export function ProfileScreen() {
       .then(({ data }) => setProfile(data))
       .catch(() => signOut());
   }, [signOut]);
+
+  // Persist the chosen avatar accent across remounts.
+  useEffect(() => {
+    AsyncStorage.getItem(ACCENT_KEY)
+      .then((id) => {
+        const found = id ? ACCENTS.find((a) => a.key === id) : undefined;
+        if (found) setAccent(found);
+      })
+      .finally(() => {
+        accentHydrated.current = true;
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!accentHydrated.current) return;
+    AsyncStorage.setItem(ACCENT_KEY, accent.key).catch(() => {});
+  }, [accent]);
 
   const role = profile?.role ?? "user";
   const isCitizen = role === "user";
@@ -112,7 +135,7 @@ export function ProfileScreen() {
                 (active ? "bg-primary" : "")
               }
             >
-              <Icon size={16} color={active ? "#fff" : "#6c7278"} />
+              <Icon size={16} color={active ? "#fff" : c.mutedForeground} />
               <Text
                 className={
                   "text-[13px] font-semibold " +
@@ -152,7 +175,7 @@ export function ProfileScreen() {
           onPress={handleLogout}
           className="flex-row gap-2"
         >
-          <LogOut size={16} color="#ff3b30" />
+          <LogOut size={16} color={c.destructive} />
           <Text className="text-[14px] font-semibold text-destructive">
             Log out
           </Text>
@@ -165,6 +188,7 @@ export function ProfileScreen() {
 /* ============================ Identity hero ============================ */
 /* ---------------- impact strip (citizens) ---------------- */
 function ProfileImpact() {
+  const c = useColors();
   const [impact, setImpact] = useState<Impact | null>(null);
   const [points, setPoints] = useState<number | null>(null);
 
@@ -189,7 +213,7 @@ function ProfileImpact() {
   return (
     <Surface className="mt-4 gap-3.5 p-5">
       <View className="flex-row items-center gap-1.5">
-        <Leaf size={12} color="#1f6b38" />
+        <Leaf size={12} color={c.accentForeground} />
         <Text className="text-[10.5px] font-bold tracking-[1.5px] text-accent-foreground">
           YOUR IMPACT
         </Text>
@@ -203,7 +227,7 @@ function ProfileImpact() {
             <CountUp
               value={s.value}
               decimals={s.decimals ?? 0}
-              style={{ fontSize: 24, color: "#14181a" }}
+              style={{ fontSize: 24, color: c.foreground }}
             />
             <Text className="mt-0.5 text-[11.5px] text-muted-foreground">
               {s.label}
@@ -252,7 +276,7 @@ function IdentityHero({
         </View>
         <View className="min-w-0 flex-1">
           <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="font-display text-[23px] tracking-tight">
+            <Text variant="h1" className="tracking-tight">
               {profile.name || "Your profile"}
             </Text>
           </View>
@@ -285,6 +309,7 @@ function AccountPanel({
   onAccent: (a: Accent) => void;
   onSaved: (p: AuthProfile) => void;
 }) {
+  const c = useColors();
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
   const [saving, setSaving] = useState(false);
@@ -346,7 +371,7 @@ function AccountPanel({
       <Surface className="gap-4 p-5">
         <View>
           <View className="flex-row items-center gap-2">
-            <Palette size={16} color="#34c759" />
+            <Palette size={16} color={c.primary} />
             <Text className="text-[16px] font-bold tracking-tight">
               Avatar accent
             </Text>
@@ -394,6 +419,7 @@ function scorePassword(pw: string): number {
 const STRENGTH = ["Too short", "Weak", "Fair", "Good", "Strong"];
 
 function SecurityPanel() {
+  const c = useColors();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -434,7 +460,7 @@ function SecurityPanel() {
     <Surface className="gap-4 p-5">
       <View>
         <View className="flex-row items-center gap-2">
-          <KeyRound size={16} color="#34c759" />
+          <KeyRound size={16} color={c.primary} />
           <Text className="text-[16px] font-bold tracking-tight">
             Change password
           </Text>
@@ -544,6 +570,8 @@ const PREFS = [
   },
 ] as const;
 
+const NOTIF_KEY = "ctr:notif-prefs";
+
 function NotificationsPanel() {
   const [prefs, setPrefs] = useState<Record<string, boolean>>({
     pickup: true,
@@ -552,8 +580,27 @@ function NotificationsPanel() {
     product: false,
   });
 
+  // Hydrate saved preferences on mount.
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIF_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const saved = JSON.parse(raw);
+          if (saved && typeof saved === "object") {
+            setPrefs((p) => ({ ...p, ...saved }));
+          }
+        } catch {}
+      })
+      .catch(() => {});
+  }, []);
+
   const toggle = (key: string) =>
-    setPrefs((p) => ({ ...p, [key]: !p[key] }));
+    setPrefs((p) => {
+      const next = { ...p, [key]: !p[key] };
+      AsyncStorage.setItem(NOTIF_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
 
   return (
     <Surface className="gap-1 p-5">
@@ -586,6 +633,7 @@ function NotificationsPanel() {
 
 /* ============================ shared bits ============================ */
 function Banner({ ok, children }: { ok: boolean; children: string }) {
+  const c = useColors();
   return (
     <View
       className={
@@ -594,9 +642,9 @@ function Banner({ ok, children }: { ok: boolean; children: string }) {
       }
     >
       {ok ? (
-        <CheckCircle2 size={16} color="#34c759" />
+        <CheckCircle2 size={16} color={c.primary} />
       ) : (
-        <AlertCircle size={16} color="#ff3b30" />
+        <AlertCircle size={16} color={c.destructive} />
       )}
       <Text
         className={

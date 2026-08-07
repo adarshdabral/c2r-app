@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   Calendar,
   CheckCircle,
@@ -18,15 +19,16 @@ import {
   Screen,
   Text,
   Button,
-  Input,
-  Field,
   Surface,
   EmptyState,
   LoadingState,
-  OtpInput,
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BookingDetails } from "@/components/booking/BookingDetails";
+import { GradientHeader } from "@/components/GradientHeader";
+import { CollectPanel } from "@/components/recycler/CollectPanel";
+import { useColors } from "@/lib/theme";
+import { DOMAIN } from "@/lib/domains";
 
 // Statuses still needing recycler action (drive the "active" grouping).
 const ACTIVE_STATUSES: DropOffStatus[] = [
@@ -40,6 +42,7 @@ const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 export default function RecyclerDropoffsScreen() {
+  const c = useColors();
   const [items, setItems] = useState<DropOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -98,27 +101,26 @@ export default function RecyclerDropoffsScreen() {
   return (
     <Screen contentClassName="gap-6 py-6">
       {/* Header */}
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-1">
-          <Text className="text-[24px] font-extrabold tracking-tight">
-            Drop-off Requests
-          </Text>
-          <Text className="mt-1 text-[13px] text-muted-foreground">
-            Approve incoming drop-offs and verify collections at your stores.
-          </Text>
-        </View>
-        <Button
-          size="sm"
-          variant="secondary"
-          onPress={load}
-          className="flex-row gap-1.5"
-        >
-          <RefreshCw size={14} color="#3a4046" />
-          <Text className="text-[13px] font-semibold text-secondary-foreground">
-            Refresh
-          </Text>
-        </Button>
-      </View>
+      <GradientHeader
+        eyebrow="DROP-OFFS"
+        title="Drop-off Requests"
+        subtitle="Approve incoming drop-offs and verify collections at your stores."
+        colors={DOMAIN.dropoffs}
+        icon={Calendar}
+        right={
+          <Pressable
+            onPress={load}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh drop-off requests"
+            className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-3 py-2"
+          >
+            <RefreshCw size={14} color="#fff" />
+            <Text className="text-[12.5px] font-semibold text-white">
+              Refresh
+            </Text>
+          </Pressable>
+        }
+      />
 
       {error ? (
         <View className="rounded-xl border-l-4 border-l-destructive bg-destructive/10 px-4 py-2.5">
@@ -150,8 +152,12 @@ export default function RecyclerDropoffsScreen() {
                 description="No drop-offs need your attention right now."
               />
             ) : (
-              active.map((r) => (
-                <Surface key={r.id} className="gap-4 p-5">
+              active.map((r, i) => (
+                <Animated.View
+                  key={r.id}
+                  entering={FadeInDown.duration(400).delay(Math.min(i, 6) * 70)}
+                >
+                <Surface className="gap-4 p-5">
                   <Summary r={r} />
 
                   <View className="flex-row flex-wrap items-center gap-2">
@@ -176,7 +182,7 @@ export default function RecyclerDropoffsScreen() {
                           disabled={busyId === r.id}
                           className="flex-row gap-1.5"
                         >
-                          <XCircle size={14} color="#ff3b30" />
+                          <XCircle size={14} color={c.destructive} />
                           <Text className="text-[13px] font-semibold text-destructive">
                             Reject
                           </Text>
@@ -191,7 +197,7 @@ export default function RecyclerDropoffsScreen() {
                         disabled={busyId === r.id}
                         className="flex-row gap-1.5"
                       >
-                        <XCircle size={14} color="#ff3b30" />
+                        <XCircle size={14} color={c.destructive} />
                         <Text className="text-[13px] font-semibold text-destructive">
                           Cancel
                         </Text>
@@ -208,6 +214,7 @@ export default function RecyclerDropoffsScreen() {
                       onOtp={(v) => setOtpInput((p) => ({ ...p, [r.id]: v }))}
                       onQty={(v) => setQtyInput((p) => ({ ...p, [r.id]: v }))}
                       onSubmit={() => collect(r.id)}
+                      quantityVerb="received"
                     />
                   ) : null}
                   <BookingDetails
@@ -221,6 +228,7 @@ export default function RecyclerDropoffsScreen() {
                     onChange={load}
                   />
                 </Surface>
+                </Animated.View>
               ))
             )}
           </View>
@@ -231,8 +239,12 @@ export default function RecyclerDropoffsScreen() {
               <Text className="text-[16px] font-bold tracking-tight">
                 History
               </Text>
-              {history.map((r) => (
-                <Surface key={r.id} className="p-4">
+              {history.map((r, i) => (
+                <Animated.View
+                  key={r.id}
+                  entering={FadeInDown.duration(400).delay(Math.min(i, 6) * 60)}
+                >
+                <Surface className="p-4">
                   <Summary r={r} compact />
                   <BookingDetails
                     type="dropoff"
@@ -245,6 +257,7 @@ export default function RecyclerDropoffsScreen() {
                     onChange={load}
                   />
                 </Surface>
+                </Animated.View>
               ))}
             </View>
           ) : null}
@@ -255,6 +268,7 @@ export default function RecyclerDropoffsScreen() {
 }
 
 function Summary({ r, compact }: { r: DropOffRequest; compact?: boolean }) {
+  const c = useColors();
   return (
     <View className="gap-1.5">
       <View className="flex-row items-center gap-2">
@@ -264,7 +278,7 @@ function Summary({ r, compact }: { r: DropOffRequest; compact?: boolean }) {
         </Text>
       </View>
       <View className="flex-row items-center gap-1.5">
-        <Package size={14} color="#6c7278" />
+        <Package size={14} color={c.mutedForeground} />
         <Text className="text-[14px] font-medium">
           {r.wasteCategory} · {r.wasteQuantity} kg
           {!compact && r.storeName ? (
@@ -274,68 +288,16 @@ function Summary({ r, compact }: { r: DropOffRequest; compact?: boolean }) {
       </View>
       <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1">
         <View className="flex-row items-center gap-1">
-          <Calendar size={14} color="#6c7278" />
+          <Calendar size={14} color={c.mutedForeground} />
           <Text className="text-[12px] text-muted-foreground">
             {fmtDate(r.scheduledDate)}
           </Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Clock size={14} color="#6c7278" />
+          <Clock size={14} color={c.mutedForeground} />
           <Text className="text-[12px] text-muted-foreground">{r.timeSlot}</Text>
         </View>
       </View>
     </View>
-  );
-}
-
-function CollectPanel({
-  declaredQty,
-  otp,
-  qty,
-  busy,
-  onOtp,
-  onQty,
-  onSubmit,
-}: {
-  declaredQty: number;
-  otp: string;
-  qty: string;
-  busy: boolean;
-  onOtp: (v: string) => void;
-  onQty: (v: string) => void;
-  onSubmit: () => void;
-}) {
-  const disabled = busy || otp.length < 6 || qty === "" || Number(qty) < 0;
-  return (
-    <Surface variant="inset" className="gap-3 p-4">
-      <Text className="text-[14px] font-bold">Verify &amp; collect</Text>
-      <Text className="text-[12px] text-muted-foreground">
-        Ask the customer for the OTP shown on their dashboard, then log the
-        actual quantity received (declared: {declaredQty} kg).
-      </Text>
-      <Field label="Customer OTP">
-        <OtpInput value={otp} onChange={onOtp} length={6} autoFocus={false} />
-      </Field>
-      <Field label="Actual quantity (kg)">
-        <Input
-          keyboardType="decimal-pad"
-          placeholder="Actual kg"
-          value={qty}
-          onChangeText={onQty}
-        />
-      </Field>
-      <Button
-        size="sm"
-        onPress={onSubmit}
-        loading={busy}
-        disabled={disabled}
-        className="flex-row gap-1.5 self-start"
-      >
-        <CheckCircle size={14} color="#fff" />
-        <Text className="text-[13px] font-semibold text-primary-foreground">
-          Complete
-        </Text>
-      </Button>
-    </Surface>
   );
 }

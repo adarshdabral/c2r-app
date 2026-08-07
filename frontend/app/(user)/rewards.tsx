@@ -13,6 +13,7 @@ import {
   EmptyState,
   ErrorState,
 } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 
 const fmtDateTime = (iso: string | null) =>
   iso
@@ -35,6 +36,7 @@ const shortTx = (txId: string) =>
  * this screen shows a friendly "unavailable" state.
  */
 export default function RewardsScreen() {
+  const c = useColors();
   const [summary, setSummary] = useState<RewardsSummary | null>(null);
   const [history, setHistory] = useState<RewardHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +120,7 @@ export default function RewardsScreen() {
 
           {/* Trust note */}
           <View className="mt-3 flex-row items-center gap-2 px-1">
-            <ShieldCheck size={14} color="#1f6b38" />
+            <ShieldCheck size={14} color={c.accentForeground} />
             <Text className="flex-1 text-[12px] text-muted-foreground">
               Every point is recorded on a private blockchain ledger — a
               tamper-evident history you can audit below.
@@ -126,7 +128,7 @@ export default function RewardsScreen() {
           </View>
 
           <View className="mb-2 mt-6 flex-row items-center gap-2">
-            <TrendingUp size={16} color="#14181a" />
+            <TrendingUp size={16} color={c.foreground} />
             <Text className="text-[15px] font-bold">On-chain history</Text>
           </View>
         </View>

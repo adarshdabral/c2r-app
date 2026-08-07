@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BookingDetails } from "@/components/booking/BookingDetails";
+import { useColors } from "@/lib/theme";
 
 // A drop-off can be cancelled by the user until it completes.
 const CANCELLABLE: DropOffStatus[] = [
@@ -54,6 +55,7 @@ function OtpDisplay({ otp }: { otp: string }) {
 
 export default function MyDropoffsScreen() {
   const router = useRouter();
+  const c = useColors();
   const [items, setItems] = useState<DropOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -110,13 +112,13 @@ export default function MyDropoffsScreen() {
           </Text>
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1">
             <View className="flex-row items-center gap-1.5">
-              <Calendar size={14} color="#6c7278" />
+              <Calendar size={14} color={c.mutedForeground} />
               <Text className="text-[12.5px] text-muted-foreground">
                 {fmtDate(r.scheduledDate)}
               </Text>
             </View>
             <View className="flex-row items-center gap-1.5">
-              <Clock size={14} color="#6c7278" />
+              <Clock size={14} color={c.mutedForeground} />
               <Text className="text-[12.5px] text-muted-foreground">
                 {r.timeSlot}
               </Text>
@@ -157,7 +159,7 @@ export default function MyDropoffsScreen() {
       <View className="flex-1 px-5 pt-4">
         <View className="mb-3 flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-[24px] font-extrabold tracking-tight">
+            <Text variant="h1">
               My drop-offs
             </Text>
             <Text className="text-[13px] text-muted-foreground">

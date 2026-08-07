@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { ChevronRight, GraduationCap } from "lucide-react-native";
 import { Text, Surface } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { TutorialTour } from "@/components/TutorialTour";
 import {
   TUTORIALS,
@@ -23,6 +24,7 @@ export function TutorialLauncher({
   className?: string;
 }) {
   const tut = TUTORIALS[tutorialKey];
+  const c = useColors();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export function TutorialLauncher({
               {tut.banner.subtitle}
             </Text>
           </View>
-          <ChevronRight size={20} color="#6c7278" />
+          <ChevronRight size={20} color={c.mutedForeground} />
         </Surface>
       </Pressable>
 

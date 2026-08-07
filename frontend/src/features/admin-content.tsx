@@ -25,6 +25,7 @@ import {
   type SiteMediaItem,
 } from "@/lib/api";
 import { Text, Button, Input, Textarea, Switch, Surface, LoadingState } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { pickImages, pickVideo } from "@/lib/imagePicker";
 
 /**
@@ -244,6 +245,7 @@ function CollectionCard({
   icon: typeof Images;
   withBody: boolean;
 }) {
+  const c = useColors();
   const [items, setItems] = useState<SiteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -302,7 +304,7 @@ function CollectionCard({
         </View>
       )}
       <Button size="sm" variant="outline" onPress={add} loading={adding} className="flex-row gap-1.5 self-start px-4">
-        <Plus size={15} color="#1f6b38" />
+        <Plus size={15} color={c.accentForeground} />
         <Text className="text-[13px] font-semibold text-primary">Add item</Text>
       </Button>
     </Surface>
@@ -320,6 +322,7 @@ function ItemRow({
   onChange: (next: SiteMediaItem) => void;
   onRemove: () => void;
 }) {
+  const c = useColors();
   const [title, setTitle] = useState(item.title ?? "");
   const [body, setBody] = useState(item.body ?? "");
   const [saving, setSaving] = useState(false);
@@ -390,8 +393,14 @@ function ItemRow({
           >
             <Text className="text-[12px] font-semibold">Save</Text>
           </Button>
-          <Button size="sm" variant="ghost" onPress={remove} className="px-2">
-            <Trash2 size={15} color="#c0392b" />
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={remove}
+            className="px-2"
+            accessibilityLabel="Delete item"
+          >
+            <Trash2 size={15} color={c.destructive} />
           </Button>
         </View>
       </View>
@@ -402,10 +411,11 @@ function ItemRow({
 /* ------------------------------ Shared bits ------------------------------ */
 
 function CardHeader({ icon: Icon, title, subtitle }: { icon: typeof Images; title: string; subtitle: string }) {
+  const c = useColors();
   return (
     <View className="flex-row items-start gap-3">
       <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/[0.12]">
-        <Icon size={18} color="#1f6b38" />
+        <Icon size={18} color={c.accentForeground} />
       </View>
       <View className="flex-1">
         <Text className="font-display text-[15px]">{title}</Text>
@@ -416,10 +426,11 @@ function CardHeader({ icon: Icon, title, subtitle }: { icon: typeof Images; titl
 }
 
 function MediaPreview({ uri, kind }: { uri: string | null; kind: "image" | "video" }) {
+  const c = useColors();
   if (!uri) {
     return (
       <View className="h-40 items-center justify-center rounded-2xl bg-muted">
-        <ImageIcon size={26} color="#9aa0a6" />
+        <ImageIcon size={26} color={c.mutedForeground} />
         <Text className="mt-1.5 text-[12px] text-muted-foreground">No {kind} yet</Text>
       </View>
     );

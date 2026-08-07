@@ -16,6 +16,7 @@ import { ArrowLeft, ArrowRight, Send, Sparkles } from "lucide-react-native";
 import { Text } from "@/components/ui";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { DOMAIN } from "@/lib/domains";
+import { useColors } from "@/lib/theme";
 import { assistantQuery, getAssistantIntro, type AssistantAction } from "@/lib/api";
 
 type Msg = {
@@ -31,6 +32,7 @@ const nextId = () => `m${seq++}`;
 
 export default function AssistantScreen() {
   const router = useRouter();
+  const c = useColors();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -90,7 +92,13 @@ export default function AssistantScreen() {
       <View className="overflow-hidden">
         <LinearGradient colors={DOMAIN.assistant} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 16 }}>
           <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => router.back()} hitSlop={10} className="h-9 w-9 items-center justify-center rounded-full bg-white/20">
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              className="h-9 w-9 items-center justify-center rounded-full bg-white/20"
+            >
               <ArrowLeft size={19} color="#fff" />
             </Pressable>
             <View className="h-10 w-10 items-center justify-center rounded-2xl bg-white/20">
@@ -133,19 +141,23 @@ export default function AssistantScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Ask a question…"
-            placeholderTextColor="#6c7278"
+            placeholderTextColor={c.mutedForeground}
             multiline
             className="max-h-28 flex-1 rounded-2xl bg-muted px-4 py-2.5 text-[14px] text-foreground"
             onSubmitEditing={() => send(input)}
             returnKeyType="send"
           />
-          <PressableScale onPress={() => send(input)} disabled={!input.trim() || sending}>
+          <PressableScale
+            onPress={() => send(input)}
+            disabled={!input.trim() || sending}
+            accessibilityLabel="Send message"
+          >
             <View
               className={`h-11 w-11 items-center justify-center rounded-full ${
                 input.trim() && !sending ? "bg-primary" : "bg-muted"
               }`}
             >
-              <Send size={18} color={input.trim() && !sending ? "#fff" : "#9aa0a6"} />
+              <Send size={18} color={input.trim() && !sending ? "#fff" : c.mutedForeground} />
             </View>
           </PressableScale>
         </View>
@@ -163,6 +175,7 @@ function Bubble({
   onChip: (text: string) => void;
   onAction: (href: string) => void;
 }) {
+  const c = useColors();
   const isBot = msg.from === "bot";
   return (
     <Animated.View entering={FadeInUp.duration(280)} className={isBot ? "items-start" : "items-end"}>
@@ -184,7 +197,7 @@ function Bubble({
         <PressableScale onPress={() => onAction(msg.action!.href)}>
           <View className="mt-2 flex-row items-center gap-1.5 rounded-full bg-primary/[0.12] px-3.5 py-2">
             <Text className="text-[12.5px] font-bold text-primary">{msg.action.label}</Text>
-            <ArrowRight size={14} color="#1f6b38" />
+            <ArrowRight size={14} color={c.accentForeground} />
           </View>
         </PressableScale>
       ) : null}

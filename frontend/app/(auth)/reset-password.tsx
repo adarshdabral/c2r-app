@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, CheckCircle2, Recycle } from "lucide-react-native";
 import { Screen, Text, Button, Input, Field, Surface } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { api } from "@/lib/api";
 
 /**
@@ -11,6 +12,7 @@ import { api } from "@/lib/api";
  * token manually if they only received the web link. See VERIFY.md.
  */
 export default function ResetPasswordScreen() {
+  const c = useColors();
   const params = useLocalSearchParams<{ token?: string }>();
   const [token, setToken] = useState(params.token ?? "");
 
@@ -51,7 +53,7 @@ export default function ResetPasswordScreen() {
       >
         <Link href="/login" asChild>
           <Pressable className="mb-7 flex-row items-center gap-1.5">
-            <ArrowLeft size={16} color="#6c7278" />
+            <ArrowLeft size={16} color={c.mutedForeground} />
             <Text className="text-[14px] font-medium text-muted-foreground">
               Back to login
             </Text>
@@ -71,7 +73,7 @@ export default function ResetPasswordScreen() {
           {done ? (
             <View className="items-center gap-4 py-4">
               <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/15">
-                <CheckCircle2 size={32} color="#34c759" strokeWidth={2.2} />
+                <CheckCircle2 size={32} color={c.primary} strokeWidth={2.2} />
               </View>
               <View>
                 <Text className="text-center text-[22px] font-extrabold tracking-tight">

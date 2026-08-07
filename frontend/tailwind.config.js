@@ -12,6 +12,21 @@ module.exports = {
         "display-black": ["Fraunces_900Black"],
         "display-semi": ["Fraunces_600SemiBold"],
       },
+      // Tokenized type scale — the single source of truth for sizing. Screens use
+      // the `variant` prop on <Text> (or these `text-*` classes) instead of
+      // ad-hoc `text-[Npx]` brackets, so a "title" is one size app-wide.
+      fontSize: {
+        micro: ["11px", { lineHeight: "15px" }],
+        caption: ["12.5px", { lineHeight: "17px" }],
+        label: ["13px", { lineHeight: "18px" }],
+        body: ["14px", { lineHeight: "20px" }],
+        "body-lg": ["15px", { lineHeight: "22px" }],
+        h3: ["17px", { lineHeight: "22px" }],
+        h2: ["20px", { lineHeight: "26px" }],
+        h1: ["24px", { lineHeight: "30px", letterSpacing: "-0.3px" }],
+        display: ["28px", { lineHeight: "32px", letterSpacing: "-0.5px" }],
+        hero: ["34px", { lineHeight: "38px", letterSpacing: "-1px" }],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

@@ -17,13 +17,25 @@ import {
   type NotificationTone,
 } from "@/lib/notifications";
 import { Text, Surface, LoadingState, EmptyState } from "@/components/ui";
+import { useColors, type ThemeColors } from "@/lib/theme";
 
-const TONE: Record<NotificationTone, { icon: LucideIcon; color: string; ring: string }> = {
-  success: { icon: CheckCircle2, color: "#1f6b38", ring: "bg-primary/[0.12]" },
-  action: { icon: KeyRound, color: "#9a5b00", ring: "bg-chart-3/15" },
-  info: { icon: Truck, color: "#2563eb", ring: "bg-accent" },
-  muted: { icon: Clock, color: "#6c7278", ring: "bg-muted" },
+const TONE: Record<NotificationTone, { icon: LucideIcon; ring: string }> = {
+  success: { icon: CheckCircle2, ring: "bg-primary/[0.12]" },
+  action: { icon: KeyRound, ring: "bg-chart-3/15" },
+  info: { icon: Truck, ring: "bg-accent" },
+  muted: { icon: Clock, ring: "bg-muted" },
 };
+
+// Icon tint per tone — resolved at render so it flips with light/dark. Amber
+// (action) and blue (info) are deliberate semantic hues kept across themes.
+const toneColor = (tone: NotificationTone, c: ThemeColors): string =>
+  tone === "success"
+    ? c.accentForeground
+    : tone === "muted"
+      ? c.mutedForeground
+      : tone === "action"
+        ? "#9a5b00"
+        : "#2563eb";
 
 const relative = (iso: string) => {
   const d = new Date(iso);
@@ -50,6 +62,7 @@ function OtpBadge({ otp }: { otp: string }) {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const c = useColors();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,7 +115,7 @@ export default function NotificationsScreen() {
           >
             <Surface className="flex-row items-start gap-3 p-4">
               <View className={`h-10 w-10 items-center justify-center rounded-full ${t.ring}`}>
-                <Icon size={18} color={t.color} />
+                <Icon size={18} color={toneColor(item.tone, c)} />
               </View>
               <View className="min-w-0 flex-1">
                 <View className="flex-row items-center justify-between gap-2">

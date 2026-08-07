@@ -3,6 +3,7 @@ import { TextInput, type TextStyle, type StyleProp } from "react-native";
 import Animated, {
   Easing,
   useAnimatedProps,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
@@ -45,13 +46,12 @@ export function CountUp({
   style?: StyleProp<TextStyle>;
 }) {
   const v = useSharedValue(0);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
-    v.value = withTiming(value, {
-      duration,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [value, duration, v]);
+    // Reduce motion → show the final number immediately (no roll-up).
+    v.value = reduced ? value : withTiming(value, { duration, easing: Easing.out(Easing.cubic) });
+  }, [value, duration, reduced, v]);
 
   const animatedProps = useAnimatedProps(() => {
     let body: string;

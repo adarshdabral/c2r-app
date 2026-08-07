@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   AlertTriangle,
@@ -50,6 +51,9 @@ import {
 } from "@/components/ui";
 import { ContentSection } from "@/features/admin-content";
 import { StatusBadge } from "@/components/StatusBadge";
+import { GradientHeader } from "@/components/GradientHeader";
+import { PressableScale } from "@/components/motion/PressableScale";
+import { useColors } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 import {
   ADMIN_COLORS,
@@ -76,29 +80,28 @@ const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
 
 export default function AdminDashboardScreen() {
   const { signOut } = useAuth();
+  const c = useColors();
   const [tab, setTab] = useState<Tab>("overview");
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-background">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-4">
-        <View className="flex-1 pr-3">
-          <Text className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground">
-            Control center
-          </Text>
-          <Text className="text-[24px] font-extrabold tracking-tight">
-            Admin
-          </Text>
-        </View>
-        <Button
-          size="sm"
-          variant="outline"
-          onPress={() => signOut()}
-          className="flex-row gap-1.5"
-        >
-          <LogOut size={16} color="#14181a" />
-          <Text className="text-[13px] font-semibold">Sign out</Text>
-        </Button>
+      <View className="px-5 pt-3">
+        <GradientHeader
+          eyebrow="ADMIN"
+          title="Control center"
+          subtitle="Verify stores, clear disputes, and keep the platform healthy."
+          colors={["#334155", "#475569"]}
+          icon={LayoutDashboard}
+          right={
+            <PressableScale onPress={() => signOut()} accessibilityLabel="Sign out">
+              <View className="flex-row items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2">
+                <LogOut size={15} color="#fff" />
+                <Text className="text-[12.5px] font-semibold text-white">Sign out</Text>
+              </View>
+            </PressableScale>
+          }
+        />
       </View>
 
       {/* Segmented tab bar */}
@@ -122,7 +125,7 @@ export default function AdminDashboardScreen() {
               >
                 <Icon
                   size={15}
-                  color={active ? "#ffffff" : ADMIN_COLORS.muted}
+                  color={active ? "#ffffff" : c.mutedForeground}
                 />
                 <Text
                   className={
@@ -154,6 +157,7 @@ export default function AdminDashboardScreen() {
 
 /* ----------------------------- Overview ----------------------------- */
 function OverviewSection({ onNavigate }: { onNavigate: (t: Tab) => void }) {
+  const c = useColors();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -225,43 +229,51 @@ function OverviewSection({ onNavigate }: { onNavigate: (t: Tab) => void }) {
             </View>
           ) : null}
         </View>
-        {queue.map((q) => {
+        {queue.map((q, i) => {
           const Icon = q.icon;
           const live = q.value > 0;
           return (
-            <Pressable
+            <Animated.View
               key={q.label}
-              onPress={() => onNavigate(q.go)}
-              className="flex-row items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-clay active:opacity-80"
-              style={
-                live
-                  ? { borderLeftWidth: 4, borderLeftColor: q.color }
-                  : undefined
-              }
+              entering={FadeInDown.duration(400).delay(i * 60)}
             >
-              <View
-                className="h-11 w-11 items-center justify-center rounded-2xl"
-                style={{
-                  backgroundColor: live ? `${q.color}1f` : "#e9edea",
-                }}
+              <PressableScale
+                onPress={() => onNavigate(q.go)}
+                accessibilityLabel={`${q.label}: ${q.value}`}
               >
-                <Icon size={20} color={live ? q.color : ADMIN_COLORS.muted} />
-              </View>
-              <View className="flex-1">
-                <Text className="text-[24px] font-extrabold leading-none text-foreground">
-                  {q.value}
-                </Text>
-                <Text className="mt-1 text-[12.5px] text-muted-foreground">
-                  {q.label}
-                </Text>
-              </View>
-            </Pressable>
+                <View
+                  className="flex-row items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-clay"
+                  style={
+                    live
+                      ? { borderLeftWidth: 4, borderLeftColor: q.color }
+                      : undefined
+                  }
+                >
+                  <View
+                    className="h-11 w-11 items-center justify-center rounded-2xl"
+                    style={{
+                      backgroundColor: live ? `${q.color}1f` : c.muted,
+                    }}
+                  >
+                    <Icon size={20} color={live ? q.color : c.mutedForeground} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[24px] font-extrabold leading-none text-foreground">
+                      {q.value}
+                    </Text>
+                    <Text className="mt-1 text-[12.5px] text-muted-foreground">
+                      {q.label}
+                    </Text>
+                  </View>
+                </View>
+              </PressableScale>
+            </Animated.View>
           );
         })}
       </View>
 
       {/* KPI band */}
-      <View className="gap-3">
+      <Animated.View entering={FadeInDown.duration(400).delay(180)} className="gap-3">
         <View className="flex-row gap-3">
           <Kpi
             icon={Users}
@@ -299,15 +311,16 @@ function OverviewSection({ onNavigate }: { onNavigate: (t: Tab) => void }) {
             }
           />
         </View>
-      </View>
+      </Animated.View>
 
       {/* Store composition (replaces donut chart) */}
+      <Animated.View entering={FadeInDown.duration(400).delay(240)}>
       <Card className="gap-4 p-5">
         <View className="flex-row items-center justify-between">
           <Text className="text-[15px] font-bold text-foreground">
             Store composition
           </Text>
-          <StoreIcon size={16} color={ADMIN_COLORS.muted} />
+          <StoreIcon size={16} color={c.mutedForeground} />
         </View>
         <Text className="-mt-2 text-[12.5px] text-muted-foreground">
           {stats.totalStores} stores · verification & suspension breakdown
@@ -333,14 +346,16 @@ function OverviewSection({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           />
         </View>
       </Card>
+      </Animated.View>
 
       {/* Request throughput (replaces bar chart + completion ring) */}
+      <Animated.View entering={FadeInDown.duration(400).delay(300)}>
       <Card className="gap-4 p-5">
         <View className="flex-row items-center justify-between">
           <Text className="text-[15px] font-bold text-foreground">
             Request throughput
           </Text>
-          <TrendingUp size={16} color={ADMIN_COLORS.muted} />
+          <TrendingUp size={16} color={c.mutedForeground} />
         </View>
         <View className="flex-row items-center justify-between rounded-2xl bg-secondary/60 p-3">
           <View>
@@ -380,6 +395,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           />
         </View>
       </Card>
+      </Animated.View>
     </ScrollView>
   );
 }
@@ -393,6 +409,7 @@ const STORE_FILTERS: SelectOption[] = [
 ];
 
 function StoresSection() {
+  const c = useColors();
   const [stores, setStores] = useState<AdminStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -545,7 +562,7 @@ function StoresSection() {
                 }
                 className="flex-row gap-1.5"
               >
-                <ShieldOff size={14} color="#14181a" />
+                <ShieldOff size={14} color={c.foreground} />
                 <Text className="text-[13px] font-semibold">Reject</Text>
               </Button>
             ) : null}
@@ -582,7 +599,7 @@ function StoresSection() {
                 }
                 className="flex-row gap-1.5"
               >
-                <RotateCcw size={14} color="#14181a" />
+                <RotateCcw size={14} color={c.foreground} />
                 <Text className="text-[13px] font-semibold">Reinstate</Text>
               </Button>
             )}
@@ -734,6 +751,7 @@ function StoresSection() {
 
 /* ----------------------------- Users ----------------------------- */
 function UsersSection() {
+  const c = useColors();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -796,7 +814,7 @@ function UsersSection() {
           className="flex-row gap-1.5"
         >
           {suspended ? (
-            <RotateCcw size={14} color="#14181a" />
+            <RotateCcw size={14} color={c.foreground} />
           ) : (
             <Ban size={14} color={ADMIN_COLORS.red} />
           )}

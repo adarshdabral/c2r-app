@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { Link } from "expo-router";
 import { Recycle, MapPin, Truck, ShieldCheck } from "lucide-react-native";
 import { Screen, Text, Button, Surface } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 
 const FEATURES = [
   { icon: Truck, title: "Doorstep pickups", body: "Raise a request and the nearest verified recycler collects your e-waste." },
@@ -10,6 +11,7 @@ const FEATURES = [
 ];
 
 export default function LandingScreen() {
+  const c = useColors();
   return (
     <Screen contentClassName="py-8">
       {/* Brand */}
@@ -45,7 +47,7 @@ export default function LandingScreen() {
         {FEATURES.map((f) => (
           <Surface key={f.title} className="flex-row items-start gap-3 p-4">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-              <f.icon size={20} color="#1f6b38" />
+              <f.icon size={20} color={c.accentForeground} />
             </View>
             <View className="flex-1">
               <Text className="text-[15px] font-bold">{f.title}</Text>

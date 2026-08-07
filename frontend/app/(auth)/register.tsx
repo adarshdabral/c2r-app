@@ -13,6 +13,7 @@ import {
   OtpInput,
   type SelectOption,
 } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { api, getApiErrorMessage, type LoginResponse } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -35,6 +36,7 @@ const USER_TYPE_OPTIONS: SelectOption<UserType>[] = USER_TYPES.map((t) => ({
 }));
 
 export default function RegisterScreen() {
+  const c = useColors();
   const { signIn } = useAuth();
   const [stage, setStage] = useState<Stage>("form");
 
@@ -118,7 +120,7 @@ export default function RegisterScreen() {
       >
         <Link href="/login" asChild>
           <Pressable className="mb-7 flex-row items-center gap-1.5">
-            <ArrowLeft size={16} color="#6c7278" />
+            <ArrowLeft size={16} color={c.mutedForeground} />
             <Text className="text-[14px] font-medium text-muted-foreground">
               Back to login
             </Text>

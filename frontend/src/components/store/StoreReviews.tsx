@@ -13,6 +13,7 @@ import {
   Surface,
   LoadingState,
 } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { StarRow, StarPicker } from "@/components/Stars";
 import { useAuth } from "@/context/AuthContext";
 
@@ -31,6 +32,7 @@ const formatDate = (iso: string) => {
  * and endpoints exactly.
  */
 export function StoreReviews({ storeId }: { storeId: number }) {
+  const c = useColors();
   const { role, isAuthenticated } = useAuth();
   const isUser = isAuthenticated && role === "user";
 
@@ -179,16 +181,22 @@ export function StoreReviews({ storeId }: { storeId: number }) {
                     ) : null}
                   </View>
                   <View className="flex-row gap-1">
-                    <Button size="icon" variant="ghost" onPress={startEdit}>
-                      <Pencil size={16} color="#14181a" />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onPress={startEdit}
+                      accessibilityLabel="Edit your review"
+                    >
+                      <Pencil size={16} color={c.foreground} />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       onPress={handleDelete}
                       disabled={submitting}
+                      accessibilityLabel="Delete your review"
                     >
-                      <Trash2 size={16} color="#ff3b30" />
+                      <Trash2 size={16} color={c.destructive} />
                     </Button>
                   </View>
                 </View>

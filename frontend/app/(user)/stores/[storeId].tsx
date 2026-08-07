@@ -33,18 +33,20 @@ import {
 } from "@/components/ui";
 import { StoreReviews } from "@/components/store/StoreReviews";
 import { useLocation } from "@/hooks/useLocation";
+import { useColors } from "@/lib/theme";
 
 type FetchState = "loading" | "ready" | "not_found" | "error";
 
 /* ---------------- sections ---------------- */
 
 function StoreHeader({ store }: { store: StoreDetails }) {
+  const c = useColors();
   const verified = store.verificationStatus === "Verified";
   const active = store.status === "Active";
   return (
     <Card className="p-5">
       <View className="flex-row flex-wrap items-center gap-2">
-        <Text className="font-display text-[23px] tracking-tight">
+        <Text variant="h1">
           {store.storeName}
         </Text>
       </View>
@@ -52,7 +54,7 @@ function StoreHeader({ store }: { store: StoreDetails }) {
         <Badge variant={verified ? "success" : "warning"}>
           <View className="flex-row items-center gap-1">
             {verified ? (
-              <BadgeCheck size={12} color="#1f7a3d" />
+              <BadgeCheck size={12} color={c.accentForeground} />
             ) : (
               <ShieldAlert size={12} color="#9a5b00" />
             )}
@@ -70,7 +72,7 @@ function StoreHeader({ store }: { store: StoreDetails }) {
       </View>
       <View className="mt-3 gap-1.5">
         <View className="flex-row items-center gap-1.5">
-          <MapPin size={14} color="#6c7278" />
+          <MapPin size={14} color={c.mutedForeground} />
           <Text className="text-[13px] text-muted-foreground">
             {[store.city, store.state].filter(Boolean).join(", ") || store.address}
           </Text>
@@ -78,7 +80,7 @@ function StoreHeader({ store }: { store: StoreDetails }) {
         <View className="flex-row items-center gap-4">
           {store.distanceKm != null ? (
             <View className="flex-row items-center gap-1.5">
-              <Navigation size={14} color="#6c7278" />
+              <Navigation size={14} color={c.mutedForeground} />
               <Text className="text-[13px] text-muted-foreground">
                 {store.distanceKm} km away
               </Text>
@@ -100,6 +102,7 @@ function StoreHeader({ store }: { store: StoreDetails }) {
 }
 
 function StoreInfoSection({ store }: { store: StoreDetails }) {
+  const c = useColors();
   const fullAddress = [store.address, store.city, store.state, store.pincode]
     .filter(Boolean)
     .join(", ");
@@ -119,7 +122,7 @@ function StoreInfoSection({ store }: { store: StoreDetails }) {
           </Text>
         )}
         <View className="flex-row items-start gap-2">
-          <MapPin size={16} color="#6c7278" />
+          <MapPin size={16} color={c.mutedForeground} />
           <View className="flex-1">
             <Text className="text-[13px] font-medium">Address</Text>
             <Text className="text-[13px] text-muted-foreground">{fullAddress}</Text>
@@ -131,6 +134,7 @@ function StoreInfoSection({ store }: { store: StoreDetails }) {
 }
 
 function WasteTypesSection({ store }: { store: StoreDetails }) {
+  const c = useColors();
   return (
     <Card>
       <CardHeader>
@@ -139,7 +143,7 @@ function WasteTypesSection({ store }: { store: StoreDetails }) {
       <CardContent className="gap-4">
         <View className="flex-row gap-4">
           <View className="flex-1 flex-row items-center gap-2">
-            <Clock size={16} color="#6c7278" />
+            <Clock size={16} color={c.mutedForeground} />
             <View>
               <Text className="text-[12px] text-muted-foreground">Hours</Text>
               <Text className="text-[13px] font-medium">
@@ -148,7 +152,7 @@ function WasteTypesSection({ store }: { store: StoreDetails }) {
             </View>
           </View>
           <View className="flex-1 flex-row items-center gap-2">
-            <Truck size={16} color="#6c7278" />
+            <Truck size={16} color={c.mutedForeground} />
             <View>
               <Text className="text-[12px] text-muted-foreground">Pickup</Text>
               <Text
@@ -164,7 +168,7 @@ function WasteTypesSection({ store }: { store: StoreDetails }) {
         </View>
         <View>
           <View className="mb-2 flex-row items-center gap-1.5">
-            <Recycle size={14} color="#6c7278" />
+            <Recycle size={14} color={c.mutedForeground} />
             <Text className="text-[12px] text-muted-foreground">
               Accepted waste types
             </Text>
@@ -228,6 +232,7 @@ function CapacitySection({ store }: { store: StoreDetails }) {
 }
 
 function ContactSection({ store }: { store: StoreDetails }) {
+  const c = useColors();
   return (
     <Card>
       <CardHeader>
@@ -235,7 +240,7 @@ function ContactSection({ store }: { store: StoreDetails }) {
       </CardHeader>
       <CardContent className="gap-3">
         <View className="flex-row items-center gap-2">
-          <Phone size={16} color="#6c7278" />
+          <Phone size={16} color={c.mutedForeground} />
           {store.contactNumber ? (
             <Text
               className="text-[13px] font-medium text-primary"
@@ -248,7 +253,7 @@ function ContactSection({ store }: { store: StoreDetails }) {
           )}
         </View>
         <View className="flex-row items-center gap-2">
-          <Mail size={16} color="#6c7278" />
+          <Mail size={16} color={c.mutedForeground} />
           {store.email ? (
             <Text
               className="text-[13px] font-medium text-primary"
@@ -281,6 +286,7 @@ function StateNotice({
 
 export default function StoreDetailScreen() {
   const router = useRouter();
+  const c = useColors();
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
   const { request: requestLocation } = useLocation();
 
@@ -404,7 +410,7 @@ export default function StoreDetailScreen() {
             onPress={() => router.push(`/dropoff?storeId=${store.id}` as any)}
             className="flex-row gap-2"
           >
-            <PackageCheck size={16} color="#14181a" />
+            <PackageCheck size={16} color={c.foreground} />
             <Text className="text-[15px] font-semibold">Schedule Drop-off</Text>
           </Button>
         </View>

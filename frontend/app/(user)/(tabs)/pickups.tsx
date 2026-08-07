@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { api, type PickupRequest, type PickupStatus } from "@/lib/api";
 import { GradientHeader } from "@/components/GradientHeader";
 import { DOMAIN } from "@/lib/domains";
+import { useColors } from "@/lib/theme";
 import {
   Text,
   Button,
@@ -62,6 +63,7 @@ function OtpDisplay({ otp }: { otp: string }) {
 
 export default function UserPickupsScreen() {
   const router = useRouter();
+  const c = useColors();
   const [items, setItems] = useState<PickupRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,7 +153,7 @@ export default function UserPickupsScreen() {
             </Text>
           </View>
           <View className="flex-row items-start gap-1.5">
-            <MapPin size={14} color="#6c7278" className="mt-0.5" />
+            <MapPin size={14} color={c.mutedForeground} className="mt-0.5" />
             <Text
               className="flex-1 text-[13px] text-muted-foreground"
               numberOfLines={1}
@@ -179,7 +181,7 @@ export default function UserPickupsScreen() {
             onPress={() => rebook(r)}
             className="flex-row gap-1.5"
           >
-            <RotateCcw size={14} color="#14181a" />
+            <RotateCcw size={14} color={c.foreground} />
             <Text className="text-[13px] font-semibold">Book again</Text>
           </Button>
         ) : null}
@@ -189,7 +191,7 @@ export default function UserPickupsScreen() {
       {r.storeName ? (
         <Surface variant="inset" className="p-4">
           <View className="flex-row items-center gap-1.5">
-            <StoreIcon size={14} color="#6c7278" />
+            <StoreIcon size={14} color={c.mutedForeground} />
             <Text className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
               Assigned store
             </Text>
@@ -197,7 +199,7 @@ export default function UserPickupsScreen() {
           <Text className="mt-1.5 text-[14px] font-semibold">{r.storeName}</Text>
           {r.storeAddress ? (
             <View className="mt-1 flex-row items-start gap-1.5">
-              <MapPin size={14} color="#6c7278" className="mt-0.5" />
+              <MapPin size={14} color={c.mutedForeground} className="mt-0.5" />
               <Text className="flex-1 text-[12.5px] text-muted-foreground">
                 {r.storeAddress}
               </Text>
@@ -205,7 +207,7 @@ export default function UserPickupsScreen() {
           ) : null}
           {r.storeContact ? (
             <View className="mt-1 flex-row items-center gap-1.5">
-              <Phone size={14} color="#6c7278" />
+              <Phone size={14} color={c.mutedForeground} />
               <Text className="text-[12.5px] text-muted-foreground">
                 {r.storeContact}
               </Text>

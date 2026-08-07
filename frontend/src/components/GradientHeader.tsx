@@ -52,7 +52,7 @@ export function GradientHeader({
               {title}
             </Text>
             {subtitle ? (
-              <Text className="mt-1.5 text-[13px] leading-5 text-white/85">{subtitle}</Text>
+              <Text className="mt-1.5 text-[13px] leading-5 text-white/90">{subtitle}</Text>
             ) : null}
           </View>
           {right ? <View className="shrink-0">{right}</View> : null}

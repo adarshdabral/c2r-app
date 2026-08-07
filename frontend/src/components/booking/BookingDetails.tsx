@@ -17,6 +17,7 @@ import {
 import { Text, Surface, Button, Input, Field } from "@/components/ui";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { Shimmer } from "@/components/motion/Shimmer";
+import { useColors } from "@/lib/theme";
 import {
   getRequestImages,
   uploadRequestImages,
@@ -57,6 +58,7 @@ export function BookingDetails({
   sanitizationRequested?: boolean;
   onChange?: () => void;
 }) {
+  const c = useColors();
   const [images, setImages] = useState<RequestImages | null>(null);
   const [cert, setCert] = useState<Certificate | null>(null);
   const [imgBusy, setImgBusy] = useState(false);
@@ -127,7 +129,7 @@ export function BookingDetails({
       {items && items.length > 0 ? (
         <Surface variant="inset" className="gap-2 p-3.5">
           <View className="flex-row items-center gap-1.5">
-            <Boxes size={13} color="#1f6b38" />
+            <Boxes size={13} color={c.accentForeground} />
             <Text className="text-[11px] font-bold tracking-wide text-accent-foreground">ITEMS</Text>
           </View>
           {items.map((cat) => (
@@ -142,7 +144,7 @@ export function BookingDetails({
       {/* Quantity: declared vs verified (informational) */}
       {verifiedQty != null ? (
         <Surface variant="inset" className="flex-row items-center gap-3 p-3.5">
-          <Scale size={16} color="#6c7278" />
+          <Scale size={16} color={c.mutedForeground} />
           <View className="flex-1 flex-row gap-5">
             <View>
               <Text className="text-[10.5px] text-muted-foreground">Declared</Text>
@@ -165,20 +167,28 @@ export function BookingDetails({
       <Surface variant="inset" className="gap-3 p-3.5">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-1.5">
-            <ImagePlus size={13} color="#1f6b38" />
+            <ImagePlus size={13} color={c.accentForeground} />
             <Text className="text-[11px] font-bold tracking-wide text-accent-foreground">PHOTOS</Text>
           </View>
           {canUpload ? (
             <View className="flex-row gap-2">
-              <PressableScale onPress={() => addImages("library")} disabled={imgBusy}>
+              <PressableScale
+                onPress={() => addImages("library")}
+                disabled={imgBusy}
+                accessibilityLabel="Add photos from library"
+              >
                 <View className="flex-row items-center gap-1 rounded-full bg-primary/[0.1] px-2.5 py-1.5">
-                  <ImagePlus size={13} color="#1f6b38" />
+                  <ImagePlus size={13} color={c.accentForeground} />
                   <Text className="text-[11.5px] font-semibold text-primary">Add</Text>
                 </View>
               </PressableScale>
-              <PressableScale onPress={() => addImages("camera")} disabled={imgBusy}>
+              <PressableScale
+                onPress={() => addImages("camera")}
+                disabled={imgBusy}
+                accessibilityLabel="Take photo"
+              >
                 <View className="h-7 w-7 items-center justify-center rounded-full bg-card">
-                  <Camera size={14} color="#14181a" />
+                  <Camera size={14} color={c.foreground} />
                 </View>
               </PressableScale>
             </View>
@@ -206,7 +216,7 @@ export function BookingDetails({
       {sanitizationRequested ? (
         <Surface variant="inset" className="gap-3 p-3.5">
           <View className="flex-row items-center gap-1.5">
-            <ShieldCheck size={13} color="#1f6b38" />
+            <ShieldCheck size={13} color={c.accentForeground} />
             <Text className="text-[11px] font-bold tracking-wide text-accent-foreground">
               DATA SANITIZATION CERTIFICATE
             </Text>
@@ -215,7 +225,7 @@ export function BookingDetails({
           {cert ? (
             <View className="gap-2">
               <View className="flex-row items-center gap-2">
-                <FileCheck2 size={16} color="#1f6b38" />
+                <FileCheck2 size={16} color={c.accentForeground} />
                 <View className="flex-1">
                   <Text className="text-[13px] font-semibold">{cert.certificateNo}</Text>
                   <Text className="text-[11px] text-muted-foreground">

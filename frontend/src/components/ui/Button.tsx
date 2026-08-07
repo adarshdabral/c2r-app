@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, type PressableProps } from "react-native";
 import { Text } from "./Text";
 import { cn } from "@/lib/utils";
+import { useColors } from "@/lib/theme";
 
 type Variant =
   | "default"
@@ -36,14 +37,6 @@ const labelVariant: Record<Variant, string> = {
   destructive: "text-destructive-foreground",
 };
 
-const spinnerColor: Record<Variant, string> = {
-  default: "#ffffff",
-  secondary: "#3a4046",
-  outline: "#14181a",
-  ghost: "#14181a",
-  destructive: "#ffffff",
-};
-
 export type ButtonProps = PressableProps & {
   variant?: Variant;
   size?: Size;
@@ -65,6 +58,15 @@ export function Button({
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const c = useColors();
+  // Spinner matches the label color per variant (theme-aware).
+  const spinnerColor: Record<Variant, string> = {
+    default: c.primaryForeground,
+    secondary: c.secondaryForeground,
+    outline: c.foreground,
+    ghost: c.foreground,
+    destructive: c.destructiveForeground,
+  };
   return (
     <Pressable
       accessibilityRole="button"
@@ -83,7 +85,7 @@ export function Button({
       ) : typeof children === "string" ? (
         <Text
           className={cn(
-            "text-[15px] font-semibold",
+            "text-body-lg font-semibold",
             labelVariant[variant],
             textClassName
           )}

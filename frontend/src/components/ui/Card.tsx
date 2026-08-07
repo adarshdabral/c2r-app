@@ -1,21 +1,15 @@
 import { View, type ViewProps } from "react-native";
 import { Text } from "./Text";
+import { Surface } from "./Surface";
 import { cn } from "@/lib/utils";
 
 /**
- * Clay surface card — an elevated white panel that lifts off the tinted canvas.
- * Mirrors the web `.clay` utility (rounded-2xl + soft shadow + hairline border).
+ * Clay surface card — thin alias over <Surface variant="clay"> so there's one
+ * elevated-panel implementation. The Card.* sub-components add the standard
+ * header/title/content/footer spacing on top.
  */
 export function Card({ className, ...props }: ViewProps & { className?: string }) {
-  return (
-    <View
-      className={cn(
-        "rounded-2xl border border-border bg-card shadow-clay",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <Surface className={className} {...props} />;
 }
 
 export function CardHeader({

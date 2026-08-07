@@ -1,20 +1,19 @@
 import { Tabs } from "expo-router";
 import { LayoutGrid, Inbox, PackageCheck, Store, User } from "lucide-react-native";
-
-const ACTIVE = "#34c759";
-const INACTIVE = "#6c7278";
+import { useColors } from "@/lib/theme";
 
 /** Recycler bottom tabs (derived from recyclerNav in the web navConfig). */
 export default function RecyclerTabsLayout() {
+  const c = useColors();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: ACTIVE,
-        tabBarInactiveTintColor: INACTIVE,
-        tabBarStyle: { backgroundColor: "#ffffff", borderTopColor: "#e4e8e4" },
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.mutedForeground,
+        tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border },
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-        sceneStyle: { backgroundColor: "#eef1ee" },
+        sceneStyle: { backgroundColor: c.background },
       }}
     >
       <Tabs.Screen

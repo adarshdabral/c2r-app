@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api, type Station, type WasteType } from "@/lib/api";
+import { api, type Station } from "@/lib/api";
 import {
   Text,
   Button,
@@ -22,35 +22,20 @@ import {
   LoadingState,
   ErrorState,
   EmptyState,
-  type SelectOption,
 } from "@/components/ui";
 import { StoreMap } from "@/components/map/StoreMap";
 import { GradientHeader } from "@/components/GradientHeader";
 import { DOMAIN } from "@/lib/domains";
+import { WASTE_FILTER_OPTIONS } from "@/lib/constants";
+import { useColors } from "@/lib/theme";
 import { useLocation } from "@/hooks/useLocation";
-
-const WASTE_TYPES: WasteType[] = [
-  "Waste Batteries",
-  "PCB Scrap",
-  "Mobile Phone Scrap",
-  "Laptop Scrap",
-  "Computer Scrap",
-  "Hard Drive Scrap",
-  "IT Equipment Scrap",
-  "Telecom Equipment Scrap",
-  "Display Panel Scrap",
-];
-
-const WASTE_OPTIONS: SelectOption[] = [
-  { value: "", label: "All waste types" },
-  ...WASTE_TYPES.map((t) => ({ value: t, label: t })),
-];
 
 type LatLng = { lat: number; lng: number };
 type PanelView = "list" | "map";
 
 export default function StoresDiscoveryScreen() {
   const router = useRouter();
+  const c = useColors();
   const { coords: userLocation, request: requestLocation } = useLocation();
 
   const [center, setCenter] = useState<LatLng | null>(null);
@@ -241,7 +226,7 @@ export default function StoresDiscoveryScreen() {
         <Surface className="mb-3 gap-2.5 p-3.5">
           <View className="relative justify-center">
             <View className="absolute left-3 z-10">
-              <Search size={16} color="#6c7278" />
+              <Search size={16} color={c.mutedForeground} />
             </View>
             <Input
               placeholder="Search by store name"
@@ -272,12 +257,12 @@ export default function StoresDiscoveryScreen() {
           <Select
             value={wasteType}
             onValueChange={setWasteType}
-            options={WASTE_OPTIONS}
+            options={WASTE_FILTER_OPTIONS}
             placeholder="All waste types"
           />
           <View className="flex-row items-center justify-between rounded-full border border-input bg-card px-4 py-2">
             <View className="flex-row items-center gap-2">
-              <PackageCheck size={16} color="#6c7278" />
+              <PackageCheck size={16} color={c.mutedForeground} />
               <Text className="text-[14px]">Pickup available</Text>
             </View>
             <Switch value={pickupOnly} onValueChange={setPickupOnly} />

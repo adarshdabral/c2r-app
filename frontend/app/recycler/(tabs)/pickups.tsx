@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   CheckCircle,
   Clock,
@@ -19,28 +20,18 @@ import {
   Screen,
   Text,
   Button,
-  Input,
-  Field,
   Surface,
   Dialog,
   EmptyState,
   LoadingState,
-  OtpInput,
 } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BookingDetails } from "@/components/booking/BookingDetails";
-
-const PICKUP_LABELS: Record<PickupStatus, string> = {
-  REQUESTED: "Requested",
-  BROADCASTED: "New offer",
-  ACCEPTED: "Accepted",
-  EN_ROUTE: "En route",
-  ARRIVED: "Arrived",
-  OTP_PENDING: "Awaiting OTP",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-  EXPIRED: "Expired",
-};
+import { GradientHeader } from "@/components/GradientHeader";
+import { CollectPanel } from "@/components/recycler/CollectPanel";
+import { useColors } from "@/lib/theme";
+import { DOMAIN } from "@/lib/domains";
+import { PICKUP_LABELS } from "@/lib/constants";
 
 const fmt = (iso: string | null) =>
   iso
@@ -61,6 +52,7 @@ const ACTIVE_STATUSES: PickupStatus[] = [
 ];
 
 export default function RecyclerPickupsScreen() {
+  const c = useColors();
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -129,27 +121,26 @@ export default function RecyclerPickupsScreen() {
   return (
     <Screen contentClassName="gap-6 py-6">
       {/* Header */}
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-1">
-          <Text className="text-[24px] font-extrabold tracking-tight">
-            Pickup Requests
-          </Text>
-          <Text className="mt-1 text-[13px] text-muted-foreground">
-            Review broadcast offers and manage pickups you've accepted.
-          </Text>
-        </View>
-        <Button
-          size="sm"
-          variant="secondary"
-          onPress={load}
-          className="flex-row gap-1.5"
-        >
-          <RefreshCw size={14} color="#3a4046" />
-          <Text className="text-[13px] font-semibold text-secondary-foreground">
-            Refresh
-          </Text>
-        </Button>
-      </View>
+      <GradientHeader
+        eyebrow="PICKUPS"
+        title="Pickup Requests"
+        subtitle="Review broadcast offers and manage pickups you've accepted."
+        colors={DOMAIN.pickups}
+        icon={Truck}
+        right={
+          <Pressable
+            onPress={load}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh pickup requests"
+            className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-3 py-2"
+          >
+            <RefreshCw size={14} color="#fff" />
+            <Text className="text-[12.5px] font-semibold text-white">
+              Refresh
+            </Text>
+          </Pressable>
+        }
+      />
 
       {error ? (
         <View className="rounded-xl border-l-4 border-l-destructive bg-destructive/10 px-4 py-2.5">
@@ -183,8 +174,12 @@ export default function RecyclerPickupsScreen() {
                 description="New broadcasts appear here."
               />
             ) : (
-              openOffers.map((r) => (
-                <Surface key={r.id} className="gap-3 p-5">
+              openOffers.map((r, i) => (
+                <Animated.View
+                  key={r.id}
+                  entering={FadeInDown.duration(400).delay(Math.min(i, 6) * 70)}
+                >
+                <Surface className="gap-3 p-5">
                   <RequestSummary r={r} onDetails={() => setDetail(r)} />
                   <View className="flex-row gap-2">
                     <Button
@@ -206,13 +201,14 @@ export default function RecyclerPickupsScreen() {
                       disabled={busyId === r.id}
                       className="flex-1 flex-row gap-1.5"
                     >
-                      <XCircle size={14} color="#ff3b30" />
+                      <XCircle size={14} color={c.destructive} />
                       <Text className="text-[13px] font-semibold text-destructive">
                         Reject
                       </Text>
                     </Button>
                   </View>
                 </Surface>
+                </Animated.View>
               ))
             )}
           </View>
@@ -220,7 +216,7 @@ export default function RecyclerPickupsScreen() {
           {/* ACTIVE JOBS */}
           <View className="gap-3">
             <View className="flex-row items-center gap-2">
-              <Truck size={16} color="#34c759" />
+              <Truck size={16} color={c.primary} />
               <Text className="text-[16px] font-bold tracking-tight">
                 Active pickups
               </Text>
@@ -237,8 +233,12 @@ export default function RecyclerPickupsScreen() {
                 description="Accept an offer to get started."
               />
             ) : (
-              activeJobs.map((r) => (
-                <Surface key={r.id} className="gap-4 p-5">
+              activeJobs.map((r, i) => (
+                <Animated.View
+                  key={r.id}
+                  entering={FadeInDown.duration(400).delay(Math.min(i, 6) * 70)}
+                >
+                <Surface className="gap-4 p-5">
                   <RequestSummary r={r} onDetails={() => setDetail(r)} />
                   {r.status === "OTP_PENDING" ? (
                     <CollectPanel
@@ -270,6 +270,7 @@ export default function RecyclerPickupsScreen() {
                     onChange={load}
                   />
                 </Surface>
+                </Animated.View>
               ))
             )}
           </View>
@@ -297,6 +298,7 @@ function RequestSummary({
   r: PickupRequest;
   onDetails: () => void;
 }) {
+  const c = useColors();
   return (
     <View className="flex-row items-start justify-between gap-3">
       <View className="min-w-0 flex-1 gap-1.5">
@@ -309,13 +311,13 @@ function RequestSummary({
           ) : null}
         </View>
         <View className="flex-row items-center gap-1.5">
-          <Package size={14} color="#6c7278" />
+          <Package size={14} color={c.mutedForeground} />
           <Text className="text-[14px] font-medium">
             {r.wasteCategory} · {r.wasteQuantity} kg
           </Text>
         </View>
         <View className="flex-row items-start gap-1.5">
-          <MapPin size={14} color="#6c7278" style={{ marginTop: 2 }} />
+          <MapPin size={14} color={c.mutedForeground} style={{ marginTop: 2 }} />
           <Text
             className="flex-1 text-[13px] text-muted-foreground"
             numberOfLines={2}
@@ -325,7 +327,7 @@ function RequestSummary({
         </View>
         {r.preferredTimeSlot ? (
           <View className="flex-row items-center gap-1.5">
-            <Clock size={14} color="#6c7278" />
+            <Clock size={14} color={c.mutedForeground} />
             <Text className="text-[12px] text-muted-foreground">
               {r.preferredTimeSlot}
             </Text>
@@ -336,58 +338,6 @@ function RequestSummary({
         <Text className="text-[12px] font-semibold">Details</Text>
       </Button>
     </View>
-  );
-}
-
-function CollectPanel({
-  declaredQty,
-  otp,
-  qty,
-  busy,
-  onOtp,
-  onQty,
-  onSubmit,
-}: {
-  declaredQty: number;
-  otp: string;
-  qty: string;
-  busy: boolean;
-  onOtp: (v: string) => void;
-  onQty: (v: string) => void;
-  onSubmit: () => void;
-}) {
-  const disabled = busy || otp.length < 6 || qty === "" || Number(qty) < 0;
-  return (
-    <Surface variant="inset" className="gap-3 p-4">
-      <Text className="text-[14px] font-bold">Verify &amp; collect</Text>
-      <Text className="text-[12px] text-muted-foreground">
-        Ask the customer for the OTP shown on their dashboard, then log the
-        actual quantity you collected (declared: {declaredQty} kg).
-      </Text>
-      <Field label="Customer OTP">
-        <OtpInput value={otp} onChange={onOtp} length={6} autoFocus={false} />
-      </Field>
-      <Field label="Actual quantity (kg)">
-        <Input
-          keyboardType="decimal-pad"
-          placeholder="Actual kg"
-          value={qty}
-          onChangeText={onQty}
-        />
-      </Field>
-      <Button
-        size="sm"
-        onPress={onSubmit}
-        loading={busy}
-        disabled={disabled}
-        className="flex-row gap-1.5 self-start"
-      >
-        <CheckCircle size={14} color="#fff" />
-        <Text className="text-[13px] font-semibold text-primary-foreground">
-          Complete
-        </Text>
-      </Button>
-    </Surface>
   );
 }
 

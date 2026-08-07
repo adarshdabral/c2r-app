@@ -3,10 +3,12 @@ import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
 import { Link } from "expo-router";
 import { ArrowLeft, Recycle } from "lucide-react-native";
 import { Screen, Text, Button, Input, Field, Surface } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { api, getApiErrorMessage, type LoginResponse } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
+  const c = useColors();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +45,7 @@ export default function LoginScreen() {
       >
         <Link href="/" asChild>
           <Pressable className="mb-7 flex-row items-center gap-1.5">
-            <ArrowLeft size={16} color="#6c7278" />
+            <ArrowLeft size={16} color={c.mutedForeground} />
             <Text className="text-[14px] font-medium text-muted-foreground">
               Back
             </Text>

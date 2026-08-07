@@ -1,6 +1,7 @@
 import { Pressable, View } from "react-native";
 import { Check } from "lucide-react-native";
 import { Text } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import type { WasteType } from "@/lib/api";
 
 /**
@@ -17,6 +18,7 @@ export function CategoryMultiSelect({
   value: WasteType[];
   onChange: (next: WasteType[]) => void;
 }) {
+  const c = useColors();
   const toggle = (t: WasteType) =>
     onChange(value.includes(t) ? value.filter((x) => x !== t) : [...value, t]);
 
@@ -28,12 +30,15 @@ export function CategoryMultiSelect({
           <Pressable
             key={t}
             onPress={() => toggle(t)}
+            accessibilityRole="button"
+            accessibilityLabel={t}
+            accessibilityState={{ selected: on }}
             className={
               "flex-row items-center gap-1.5 rounded-full border px-3 py-2 " +
               (on ? "border-primary bg-primary/[0.12]" : "border-input bg-card")
             }
           >
-            {on ? <Check size={13} color="#1f6b38" /> : null}
+            {on ? <Check size={13} color={c.accentForeground} /> : null}
             <Text
               className={
                 "text-[13px] font-medium " +

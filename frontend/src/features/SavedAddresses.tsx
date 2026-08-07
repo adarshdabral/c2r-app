@@ -18,6 +18,7 @@ import {
   LoadingState,
 } from "@/components/ui";
 import { LocationPicker } from "@/components/location/LocationPicker";
+import { useColors } from "@/lib/theme";
 import { useLocation } from "@/hooks/useLocation";
 
 type LatLng = { lat: number; lng: number };
@@ -29,6 +30,7 @@ type LatLng = { lat: number; lng: number };
  * but the POST payload and validation are preserved exactly.
  */
 export function SavedAddresses() {
+  const c = useColors();
   const { coords: userLocation, request: requestLocation } = useLocation();
 
   const [items, setItems] = useState<SavedAddress[]>([]);
@@ -124,7 +126,7 @@ export function SavedAddresses() {
     <Surface className="gap-4 p-5">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <MapPin size={18} color="#34c759" />
+          <MapPin size={18} color={c.primary} />
           <Text className="text-[16px] font-extrabold tracking-tight">
             Saved addresses
           </Text>
@@ -136,7 +138,7 @@ export function SavedAddresses() {
             onPress={() => setAdding(true)}
             className="flex-row gap-1.5"
           >
-            <Plus size={14} color="#14181a" />
+            <Plus size={14} color={c.foreground} />
             <Text className="text-[13px] font-semibold">Add</Text>
           </Button>
         ) : null}
@@ -166,7 +168,7 @@ export function SavedAddresses() {
                   <Text className="text-[14px] font-semibold">{a.label}</Text>
                   {a.isDefault ? (
                     <View className="flex-row items-center gap-1 rounded-full bg-primary/[0.12] px-2 py-0.5">
-                      <Star size={10} color="#34c759" fill="#34c759" />
+                      <Star size={10} color={c.primary} fill={c.primary} />
                       <Text className="text-[10px] font-bold uppercase tracking-wide text-primary">
                         Default
                       </Text>
@@ -200,7 +202,7 @@ export function SavedAddresses() {
                   disabled={busyId === a.id}
                   onPress={() => remove(a.id)}
                 >
-                  <Trash2 size={16} color="#ff3b30" />
+                  <Trash2 size={16} color={c.destructive} />
                 </Button>
               </View>
             </View>
@@ -213,8 +215,14 @@ export function SavedAddresses() {
         <View className="gap-4 rounded-2xl border border-border p-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-[14px] font-bold">New address</Text>
-            <Pressable onPress={resetForm} hitSlop={8} className="p-1">
-              <X size={18} color="#6c7278" />
+            <Pressable
+              onPress={resetForm}
+              hitSlop={8}
+              className="p-1"
+              accessibilityRole="button"
+              accessibilityLabel="Cancel adding address"
+            >
+              <X size={18} color={c.mutedForeground} />
             </Pressable>
           </View>
           <Field label="Label">
@@ -242,7 +250,7 @@ export function SavedAddresses() {
               onPress={useMyLocation}
               className="flex-row gap-1.5"
             >
-              <LocateFixed size={14} color="#14181a" />
+              <LocateFixed size={14} color={c.foreground} />
               <Text className="text-[13px] font-semibold">My location</Text>
             </Button>
           </View>

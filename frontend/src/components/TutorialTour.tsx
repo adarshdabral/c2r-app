@@ -3,6 +3,7 @@ import { Modal, Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { Text, Button } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import type { TutorialStep } from "@/lib/tutorials";
 
 /**
@@ -20,6 +21,7 @@ export function TutorialTour({
   onClose: () => void;
 }) {
   const [i, setI] = useState(0);
+  const c = useColors();
 
   const close = () => {
     setI(0);
@@ -55,14 +57,14 @@ export function TutorialTour({
               <Text className="text-[12px] font-semibold text-muted-foreground">
                 Skip
               </Text>
-              <X size={14} color="#6c7278" />
+              <X size={14} color={c.mutedForeground} />
             </Pressable>
           </View>
 
           {/* Slide */}
           <View className="flex-1 items-center justify-center">
             <View className="mb-7 h-20 w-20 items-center justify-center rounded-3xl bg-accent">
-              <Icon size={38} color="#1f6b38" strokeWidth={2} />
+              <Icon size={38} color={c.accentForeground} strokeWidth={2} />
             </View>
             <Text className="text-center text-[22px] font-extrabold tracking-tight">
               {step.title}

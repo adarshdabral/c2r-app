@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   ArrowLeft,
   LocateFixed,
@@ -27,18 +28,10 @@ import {
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { composeAddress } from "@/lib/geocode";
 import { useLocation } from "@/hooks/useLocation";
-
-const WASTE_TYPES: WasteType[] = [
-  "Waste Batteries",
-  "PCB Scrap",
-  "Mobile Phone Scrap",
-  "Laptop Scrap",
-  "Computer Scrap",
-  "Hard Drive Scrap",
-  "IT Equipment Scrap",
-  "Telecom Equipment Scrap",
-  "Display Panel Scrap",
-];
+import { GradientHeader } from "@/components/GradientHeader";
+import { useColors } from "@/lib/theme";
+import { DOMAIN } from "@/lib/domains";
+import { WASTE_TYPES, VERIF_TEXT, VERIF_BG } from "@/lib/constants";
 
 type FormState = {
   storeName: string;
@@ -91,18 +84,8 @@ const fromStore = (s: Store): FormState => ({
   dailyCapacityKg: String(s.dailyCapacityKg ?? 0),
 });
 
-const VERIF_TEXT: Record<string, string> = {
-  Verified: "text-primary",
-  Pending: "text-chart-3",
-  Rejected: "text-destructive",
-};
-const VERIF_BG: Record<string, string> = {
-  Verified: "bg-primary/[0.12]",
-  Pending: "bg-chart-3/15",
-  Rejected: "bg-destructive/10",
-};
-
 export default function RecyclerStoresScreen() {
+  const c = useColors();
   const { coords: userLocation, request: requestLocation } = useLocation();
 
   const [stores, setStores] = useState<Store[]>([]);
@@ -299,6 +282,10 @@ export default function RecyclerStoresScreen() {
   /* ---------------- create/edit form ---------------- */
   if (formOpen) {
     return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
       <Screen contentClassName="gap-3 py-6">
         <View className="flex-row items-center gap-2">
           <Button
@@ -306,8 +293,9 @@ export default function RecyclerStoresScreen() {
             variant="ghost"
             onPress={() => setFormOpen(false)}
             disabled={saving}
+            accessibilityLabel="Back"
           >
-            <ArrowLeft size={20} color="#14181a" />
+            <ArrowLeft size={20} color={c.foreground} />
           </Button>
           <Text className="text-[20px] font-extrabold tracking-tight">
             {editingId ? "Edit store" : "Add store"}
@@ -405,7 +393,7 @@ export default function RecyclerStoresScreen() {
                 onPress={useMyLocation}
                 className="flex-row gap-1.5"
               >
-                <LocateFixed size={14} color="#14181a" />
+                <LocateFixed size={14} color={c.foreground} />
                 <Text className="text-[13px] font-semibold">My location</Text>
               </Button>
             </View>
@@ -482,6 +470,7 @@ export default function RecyclerStoresScreen() {
           </Button>
         </View>
       </Screen>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -489,22 +478,26 @@ export default function RecyclerStoresScreen() {
   return (
     <Screen contentClassName="gap-4 py-6">
       {/* Header */}
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-1">
-          <Text className="text-[24px] font-extrabold tracking-tight">
-            My Stores
-          </Text>
-          <Text className="mt-1 text-[13px] text-muted-foreground">
-            Manage your drop-off locations, capacity, and verification status.
-          </Text>
-        </View>
-        <Button size="sm" onPress={openCreate} className="flex-row gap-1.5">
-          <Plus size={16} color="#fff" />
-          <Text className="text-[13px] font-semibold text-primary-foreground">
-            Add store
-          </Text>
-        </Button>
-      </View>
+      <GradientHeader
+        eyebrow="STORES"
+        title="My Stores"
+        subtitle="Manage your drop-off locations, capacity, and verification status."
+        colors={DOMAIN.stores}
+        icon={StoreIcon}
+        right={
+          <Pressable
+            onPress={openCreate}
+            accessibilityRole="button"
+            accessibilityLabel="Add store"
+            className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-3 py-2"
+          >
+            <Plus size={15} color="#fff" />
+            <Text className="text-[12.5px] font-semibold text-white">
+              Add store
+            </Text>
+          </Pressable>
+        }
+      />
 
       {error ? (
         <View className="rounded-xl border-l-4 border-l-destructive bg-destructive/10 px-4 py-2.5">
@@ -525,7 +518,7 @@ export default function RecyclerStoresScreen() {
           onAction={openCreate}
         />
       ) : (
-        stores.map((s) => {
+        stores.map((s, i) => {
           const remaining = Math.max(
             0,
             (s.dailyCapacityKg || 0) - (s.currentCapacityKg || 0)
@@ -534,7 +527,11 @@ export default function RecyclerStoresScreen() {
             ? Math.min(100, Math.round((s.currentCapacityKg / s.dailyCapacityKg) * 100))
             : 0;
           return (
-            <Surface key={s.id} className="gap-3 p-5">
+            <Animated.View
+              key={s.id}
+              entering={FadeInDown.duration(400).delay(Math.min(i, 6) * 70)}
+            >
+            <Surface className="gap-3 p-5">
               <View className="flex-row items-start justify-between gap-3">
                 <View className="min-w-0 flex-1">
                   <View className="flex-row flex-wrap items-center gap-2">
@@ -571,7 +568,7 @@ export default function RecyclerStoresScreen() {
                     ) : null}
                   </View>
                   <View className="mt-1 flex-row items-start gap-1">
-                    <MapPin size={14} color="#6c7278" style={{ marginTop: 2 }} />
+                    <MapPin size={14} color={c.mutedForeground} style={{ marginTop: 2 }} />
                     <Text
                       className="flex-1 text-[12px] text-muted-foreground"
                       numberOfLines={1}
@@ -597,8 +594,13 @@ export default function RecyclerStoresScreen() {
                   </View>
                 </View>
                 <View className="flex-row shrink-0 gap-1">
-                  <Button size="icon" variant="ghost" onPress={() => openEdit(s)}>
-                    <Pencil size={16} color="#14181a" />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onPress={() => openEdit(s)}
+                    accessibilityLabel={`Edit ${s.storeName}`}
+                  >
+                    <Pencil size={16} color={c.foreground} />
                   </Button>
                   <Button
                     size="icon"
@@ -606,8 +608,9 @@ export default function RecyclerStoresScreen() {
                     loading={busyId === s.id}
                     disabled={busyId === s.id}
                     onPress={() => remove(s)}
+                    accessibilityLabel={`Delete ${s.storeName}`}
                   >
-                    <Trash2 size={16} color="#ff3b30" />
+                    <Trash2 size={16} color={c.destructive} />
                   </Button>
                 </View>
               </View>
@@ -654,6 +657,7 @@ export default function RecyclerStoresScreen() {
                 </View>
               </Surface>
             </Surface>
+            </Animated.View>
           );
         })
       )}

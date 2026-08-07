@@ -3,9 +3,11 @@ import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
 import { Link, router } from "expo-router";
 import { ArrowLeft, MailCheck, Recycle } from "lucide-react-native";
 import { Screen, Text, Button, Input, Field, Surface } from "@/components/ui";
+import { useColors } from "@/lib/theme";
 import { api } from "@/lib/api";
 
 export default function ForgotPasswordScreen() {
+  const c = useColors();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +36,7 @@ export default function ForgotPasswordScreen() {
       >
         <Link href="/login" asChild>
           <Pressable className="mb-7 flex-row items-center gap-1.5">
-            <ArrowLeft size={16} color="#6c7278" />
+            <ArrowLeft size={16} color={c.mutedForeground} />
             <Text className="text-[14px] font-medium text-muted-foreground">
               Back to login
             </Text>
@@ -54,7 +56,7 @@ export default function ForgotPasswordScreen() {
           {sent ? (
             <View className="items-center gap-4 py-4">
               <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/15">
-                <MailCheck size={32} color="#34c759" strokeWidth={2.2} />
+                <MailCheck size={32} color={c.primary} strokeWidth={2.2} />
               </View>
               <View>
                 <Text className="text-center text-[22px] font-extrabold tracking-tight">
