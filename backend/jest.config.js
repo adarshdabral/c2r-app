@@ -15,8 +15,11 @@ module.exports = {
     'utils/asyncHandler.js',
     'utils/generateToken.js',
     'middleware/authMiddleware.js',
+    'middleware/featureFlag.js',
     'controllers/bookingController.js',
     'config/userTypes.js',
+    'config/features.js',
+    'services/featureService.js',
   ],
   coverageThreshold: {
     global: { statements: 85, branches: 80, functions: 90, lines: 85 },

@@ -25,6 +25,8 @@ const collectionDriveRoutes = require('./routes/collectionDriveRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const siteContentRoutes = require('./routes/siteContentRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+const featureRoutes = require('./routes/featureRoutes');
+const { requireFeature } = require('./middleware/featureFlag');
 const adminRoutes = require("./routes/adminRoutes");
 
 
@@ -58,6 +60,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ message: 'Server is running' });
 });
 
+app.use('/api/features', featureRoutes); // public flag map — read before auth
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/stations', stationRoutes);
 app.use('/api/stores', storeRoutes);
@@ -67,14 +70,14 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/recyclers', recyclerRoutes);
 app.use('/api/disputes', disputeRoutes);
-app.use('/api/rewards', rewardRoutes);
+app.use('/api/rewards', requireFeature('rewards'), rewardRoutes);
 app.use('/api/ewaste', ewasteRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/collection-drives', collectionDriveRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/site-content', siteContentRoutes);
-app.use('/api/assistant', assistantRoutes);
+app.use('/api/assistant', requireFeature('chatbot'), assistantRoutes);
 app.use("/api/admin", adminRoutes);
 
 /* ----------------------- 404 HANDLER ----------------------- */

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
+import { Redirect } from "expo-router";
 import { Award, ShieldCheck, TrendingUp } from "lucide-react-native";
+import { useFeature } from "@/context/FeatureContext";
 import {
   api,
   type RewardsSummary,
@@ -37,6 +39,7 @@ const shortTx = (txId: string) =>
  */
 export default function RewardsScreen() {
   const c = useColors();
+  const rewardsEnabled = useFeature("rewards");
   const [summary, setSummary] = useState<RewardsSummary | null>(null);
   const [history, setHistory] = useState<RewardHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +73,9 @@ export default function RewardsScreen() {
     await load();
     setRefreshing(false);
   }, [load]);
+
+  // Route guard: rewards feature disabled platform-wide → screen is unreachable.
+  if (!rewardsEnabled) return <Redirect href="/dashboard" />;
 
   if (loading) {
     return <LoadingState label="Loading your rewards…" />;

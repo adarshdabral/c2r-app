@@ -24,6 +24,7 @@ import type { LucideIcon } from "lucide-react-native";
 import { Screen, Text, Surface } from "@/components/ui";
 import { useColors } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useFeatures } from "@/context/FeatureContext";
 import { api, type RewardsSummary, type AuthProfile } from "@/lib/api";
 import {
   fetchNotifications,
@@ -76,6 +77,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const c = useColors();
   const { role, userType } = useAuth();
+  const { flags } = useFeatures();
 
   // Notification-icon colors that need theme awareness (others are brand hues).
   const toneColor: Record<NotificationTone, string> = {
@@ -101,13 +103,18 @@ export default function DashboardScreen() {
   }, []);
 
   const loadRewards = useCallback(async () => {
+    // Don't call a disabled feature's endpoint (it 404s when the flag is off).
+    if (!flags.rewards) {
+      setRewards(null);
+      return;
+    }
     try {
       const { data } = await api.get<RewardsSummary>("/rewards/me");
       setRewards(data);
     } catch {
       setRewards(null);
     }
-  }, []);
+  }, [flags.rewards]);
 
   const loadImpact = useCallback(async () => {
     try {
@@ -118,6 +125,12 @@ export default function DashboardScreen() {
   }, []);
 
   const loadFeed = useCallback(async () => {
+    if (!flags.personalization) {
+      setFeed([]);
+      setUnread(0);
+      setFeedLoading(false);
+      return;
+    }
     try {
       const [items, lastSeen] = await Promise.all([fetchNotifications(), getLastSeen()]);
       setFeed(items);
@@ -127,7 +140,7 @@ export default function DashboardScreen() {
     } finally {
       setFeedLoading(false);
     }
-  }, []);
+  }, [flags.personalization]);
 
   useFocusEffect(
     useCallback(() => {
@@ -163,15 +176,17 @@ export default function DashboardScreen() {
             <Text className="mt-1 text-[13.5px] text-muted-foreground">{subheading}</Text>
           </View>
           <View className="mt-1 flex-row gap-2">
-            <Pressable
-              onPress={() => router.push("/assistant" as any)}
-              hitSlop={8}
-              className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
-              accessibilityRole="button"
-              accessibilityLabel="Assistant"
-            >
-              <Sparkles size={20} color="#0d9488" />
-            </Pressable>
+            {flags.chatbot ? (
+              <Pressable
+                onPress={() => router.push("/assistant" as any)}
+                hitSlop={8}
+                className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-clay-sm active:opacity-70"
+                accessibilityRole="button"
+                accessibilityLabel="Assistant"
+              >
+                <Sparkles size={20} color="#0d9488" />
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => router.push("/notifications" as any)}
               hitSlop={8}
@@ -259,7 +274,7 @@ export default function DashboardScreen() {
                 <Text className="text-[11px] font-medium text-white/70">Recycles completed</Text>
                 <CountUp value={impact?.completed ?? 0} style={{ color: "#fff", fontSize: 19, fontWeight: "800" }} />
               </View>
-              {rewards?.enabled ? (
+              {flags.rewards && rewards?.enabled ? (
                 <PressableScale onPress={() => router.push("/rewards" as any)}>
                   <View className="rounded-2xl bg-white/15 px-3.5 py-2">
                     <Text className="text-[11px] font-medium text-white/80">Reward points</Text>
@@ -379,8 +394,8 @@ export default function DashboardScreen() {
       {/* Admin-curated featured content (renders nothing when empty). */}
       <FeaturedCarousel />
 
-      {/* Recent activity */}
-      {feedLoading ? (
+      {/* Recent activity — personalized from the user's own history. */}
+      {flags.personalization && feedLoading ? (
         <View>
           <Text className="mb-3 mt-8 font-display text-[16px]">Recent activity</Text>
           <View className="gap-2.5">
@@ -395,7 +410,7 @@ export default function DashboardScreen() {
             ))}
           </View>
         </View>
-      ) : recent.length > 0 ? (
+      ) : flags.personalization && recent.length > 0 ? (
         <View>
           <View className="mb-3 mt-8 flex-row items-center justify-between">
             <Text className="font-display text-[16px]">Recent activity</Text>

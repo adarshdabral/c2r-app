@@ -9,7 +9,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
+import { useFeature } from "@/context/FeatureContext";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ArrowLeft, ArrowRight, Send, Sparkles } from "lucide-react-native";
@@ -33,6 +34,7 @@ const nextId = () => `m${seq++}`;
 export default function AssistantScreen() {
   const router = useRouter();
   const c = useColors();
+  const chatbot = useFeature("chatbot");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -85,6 +87,9 @@ export default function AssistantScreen() {
       scrollDown();
     }
   };
+
+  // Route guard: if the chatbot feature is turned off, this screen is unreachable.
+  if (!chatbot) return <Redirect href="/dashboard" />;
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-background">

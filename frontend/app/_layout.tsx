@@ -14,6 +14,7 @@ import Fraunces_600SemiBold from "@expo-google-fonts/fraunces/600SemiBold/Fraunc
 import Fraunces_700Bold from "@expo-google-fonts/fraunces/700Bold/Fraunces_700Bold.ttf";
 import Fraunces_900Black from "@expo-google-fonts/fraunces/900Black/Fraunces_900Black.ttf";
 import { AuthProvider, useAuth, homeRouteFor } from "@/context/AuthContext";
+import { FeatureProvider } from "@/context/FeatureContext";
 import { LoadingState } from "@/components/ui";
 import { useColors } from "@/lib/theme";
 
@@ -104,9 +105,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <StatusBar style="auto" />
-          <RootNavigator />
-          <Toast />
+          <FeatureProvider>
+            <StatusBar style="auto" />
+            <RootNavigator />
+            <Toast />
+          </FeatureProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

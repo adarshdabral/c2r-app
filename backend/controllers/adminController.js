@@ -28,6 +28,7 @@ const {
 } = require("../models/disputeModel");
 const { isRewardsEnabled, setRewardsEnabled } = require("../models/settingsModel");
 const rewardsLedger = require("../services/rewardsLedger");
+const featureService = require("../services/featureService");
 const {
   parsePagination,
   parseSort,
@@ -352,10 +353,33 @@ const updateRewardsSetting = asyncHandler(async (req, res) => {
   res.json({ rewardsEnabled: enabled });
 });
 
+/* ============================== FEATURE FLAGS ============================== */
+// Centralized product-feature toggles (personalization / rewards / chatbot).
+// Distinct from the rewards *operational* toggle above: this is the structural
+// on/off that gates routes, UI, and jobs platform-wide.
+
+const getFeatureFlags = asyncHandler(async (_req, res) => {
+  res.json({ features: await featureService.getFlags({ fresh: true }) });
+});
+
+const updateFeatureFlag = asyncHandler(async (req, res) => {
+  const { key, enabled } = req.body;
+  if (!featureService.FEATURE_KEYS.includes(key)) {
+    throw ApiError.badRequest(`key must be one of: ${featureService.FEATURE_KEYS.join(', ')}`);
+  }
+  if (typeof enabled !== 'boolean') {
+    throw ApiError.badRequest('enabled (boolean) is required');
+  }
+  await featureService.setOverride(key, enabled);
+  res.json({ features: await featureService.getFlags({ fresh: true }) });
+});
+
 module.exports = {
   getAdminOverview,
   getSettings,
   updateRewardsSetting,
+  getFeatureFlags,
+  updateFeatureFlag,
   getUsers,
   updateUserRole: updateUserRoleHandler,
   deleteUser: deleteUserHandler,

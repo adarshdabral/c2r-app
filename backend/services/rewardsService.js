@@ -6,6 +6,7 @@
 const logger = require('../utils/logger');
 const ledger = require('./rewardsLedger');
 const { isRewardsEnabled } = require('../models/settingsModel');
+const { isEnabled } = require('./featureService');
 const { findUserById } = require('../models/userModel');
 
 // Points earned per kg recycled (configurable). points = round(kg * rate).
@@ -28,6 +29,8 @@ const pointsForQuantity = (kg) => Math.max(0, Math.round(Number(kg) * POINTS_PER
  */
 async function awardForCompletion(request, source) {
   try {
+    // Structural feature gate first — a disabled `rewards` feature never awards.
+    if (!(await isEnabled('rewards'))) return;
     if (!ledger.isConfigured()) return;
     if (!(await isRewardsEnabled())) return;
 

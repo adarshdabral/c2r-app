@@ -16,7 +16,9 @@ const {
   getDisputes,
   resolveDispute,
   getSettings,
-  updateRewardsSetting
+  updateRewardsSetting,
+  getFeatureFlags,
+  updateFeatureFlag
 } = require("../controllers/adminController");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
@@ -29,6 +31,8 @@ router.get("/overview", getAdminOverview);
 // App settings / feature flags
 router.get("/settings", getSettings);
 router.patch("/settings/rewards", updateRewardsSetting);
+router.get("/features", getFeatureFlags);
+router.patch("/features", updateFeatureFlag);
 
 // Account management
 router.get("/users", getUsers);
