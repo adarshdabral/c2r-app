@@ -1,16 +1,11 @@
 /**
- * Centralized feature-flag configuration — the single source of truth for the
- * three top-level product features. Each flag has three layers, highest wins:
+ * Feature registry — metadata + the INITIAL default for each platform feature.
  *
- *   1. Built-in default (below)                — safe baseline
- *   2. Deploy-time env override                — FEATURE_<NAME>=off|on
- *   3. Runtime admin override (app_settings)   — feature_<name> = '1'|'0'
- *
- * The env layer lets ops disable a feature per-environment without a DB; the
- * admin layer lets a superuser flip it live (resolved in services/featureService).
- *
- * Disabling a feature must leave the rest of the platform fully functional:
- * routes 404, UI/nav entries hide, scheduled jobs no-op, awards stop firing.
+ * IMPORTANT: this file no longer *controls* whether a feature is on. The
+ * `feature_flags` DATABASE table is the single source of truth, managed by
+ * admins via the dashboard. The env var / default below is read exactly once —
+ * when seeding a brand-new row (see seedFeatureFlags in server.js). After that,
+ * only admins change state, and changes take effect immediately (no redeploy).
  */
 
 const parseBool = (value, fallback) => {
@@ -18,14 +13,31 @@ const parseBool = (value, fallback) => {
   return ['1', 'true', 'on', 'yes', 'enabled'].includes(String(value).trim().toLowerCase());
 };
 
-// The canonical feature keys. Keep in sync with frontend/src/lib/features.ts.
-const FEATURE_KEYS = ['personalization', 'rewards', 'chatbot'];
+// One entry per platform feature. `default` is the seed value (env override
+// allowed only at first seed). Extend this list to register a new feature.
+const FEATURE_REGISTRY = [
+  {
+    key: 'personalization',
+    name: 'Personalization',
+    description: 'Personalized dashboard, recommendations, and reminders derived from user history.',
+    default: parseBool(process.env.FEATURE_PERSONALIZATION, true),
+  },
+  {
+    key: 'rewards',
+    name: 'Reward System',
+    description: 'Points, badges, streaks, redemptions, leaderboard, and the reward ledger.',
+    default: parseBool(process.env.FEATURE_REWARDS, true),
+  },
+  {
+    key: 'chatbot',
+    name: 'AI Chatbot',
+    description: 'The role-aware assistant and its platform actions.',
+    default: parseBool(process.env.FEATURE_CHATBOT, true),
+  },
+];
 
-// Layer 1 + 2: built-in defaults, overridable by env at boot.
-const DEFAULTS = Object.freeze({
-  personalization: parseBool(process.env.FEATURE_PERSONALIZATION, true),
-  rewards: parseBool(process.env.FEATURE_REWARDS, true),
-  chatbot: parseBool(process.env.FEATURE_CHATBOT, true),
-});
+const FEATURE_KEYS = FEATURE_REGISTRY.map((f) => f.key);
+// Fallback map used only if the DB is briefly unreachable.
+const DEFAULTS = Object.freeze(Object.fromEntries(FEATURE_REGISTRY.map((f) => [f.key, f.default])));
 
-module.exports = { FEATURE_KEYS, DEFAULTS, parseBool };
+module.exports = { FEATURE_REGISTRY, FEATURE_KEYS, DEFAULTS, parseBool };

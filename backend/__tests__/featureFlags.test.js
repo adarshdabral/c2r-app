@@ -1,11 +1,15 @@
 const { parseBool, DEFAULTS, FEATURE_KEYS } = require('../config/features');
 
-// featureService talks to app_settings — mock the model so these stay pure units.
-jest.mock('../models/settingsModel', () => ({
-  getSetting: jest.fn(),
-  setSetting: jest.fn(),
+// featureService reads/writes the feature_flags table — mock the model so these
+// stay pure units.
+jest.mock('../models/featureFlagModel', () => ({
+  getEnabledMap: jest.fn(),
+  listFlags: jest.fn(),
+  setEnabled: jest.fn(),
+  getFlag: jest.fn(),
+  seedDefault: jest.fn(),
 }));
-const settings = require('../models/settingsModel');
+const flagModel = require('../models/featureFlagModel');
 const featureService = require('../services/featureService');
 const { requireFeature } = require('../middleware/featureFlag');
 const ApiError = require('../utils/ApiError');
@@ -42,86 +46,77 @@ describe('config/features parseBool', () => {
   });
 });
 
-describe('featureService.getFlags', () => {
-  test('with no overrides, returns the built-in defaults', async () => {
-    settings.getSetting.mockResolvedValue(null);
+describe('featureService.getFlags (DB-backed)', () => {
+  test('reads enabled state from the feature_flags table', async () => {
+    flagModel.getEnabledMap.mockResolvedValue({ personalization: true, rewards: false, chatbot: true });
+    const flags = await featureService.getFlags({ fresh: true });
+    expect(flags.rewards).toBe(false);
+    expect(flags.personalization).toBe(true);
+  });
+
+  test('a key with no DB row falls back to its seed default', async () => {
+    flagModel.getEnabledMap.mockResolvedValue({}); // table empty
     const flags = await featureService.getFlags({ fresh: true });
     expect(flags).toEqual(DEFAULTS);
   });
 
-  test('an admin override wins over the default', async () => {
-    // rewards overridden off, others default.
-    settings.getSetting.mockImplementation(async (key) =>
-      key === 'feature_rewards' ? '0' : null
-    );
-    const flags = await featureService.getFlags({ fresh: true });
-    expect(flags.rewards).toBe(false);
-    expect(flags.personalization).toBe(DEFAULTS.personalization);
-  });
-
-  test('override value "1" forces a feature on', async () => {
-    settings.getSetting.mockImplementation(async (key) =>
-      key === 'feature_chatbot' ? '1' : null
-    );
-    const flags = await featureService.getFlags({ fresh: true });
-    expect(flags.chatbot).toBe(true);
-  });
-
-  test('falls back to defaults if the settings store throws', async () => {
-    settings.getSetting.mockRejectedValue(new Error('db down'));
+  test('falls back to seed defaults if the DB read throws', async () => {
+    flagModel.getEnabledMap.mockRejectedValue(new Error('db down'));
     const flags = await featureService.getFlags({ fresh: true });
     expect(flags).toEqual(DEFAULTS);
   });
 
   test('caches within the TTL (no repeat reads)', async () => {
-    settings.getSetting.mockResolvedValue(null);
+    flagModel.getEnabledMap.mockResolvedValue({ rewards: true });
     await featureService.getFlags({ fresh: true });
-    const callsAfterFirst = settings.getSetting.mock.calls.length;
-    await featureService.getFlags(); // cached — no new reads
-    expect(settings.getSetting.mock.calls.length).toBe(callsAfterFirst);
+    const calls = flagModel.getEnabledMap.mock.calls.length;
+    await featureService.getFlags(); // cached
+    expect(flagModel.getEnabledMap.mock.calls.length).toBe(calls);
   });
 });
 
-describe('featureService.setOverride', () => {
-  test('persists the override and invalidates the cache', async () => {
-    settings.getSetting.mockResolvedValue(null);
+describe('featureService.setEnabled', () => {
+  test('persists via the model, records updatedBy, invalidates cache', async () => {
+    flagModel.getEnabledMap.mockResolvedValue({ rewards: true });
     await featureService.getFlags({ fresh: true }); // warm cache
-    await featureService.setOverride('rewards', false);
-    expect(settings.setSetting).toHaveBeenCalledWith('feature_rewards', '0');
-    // Next read re-resolves (cache was cleared).
-    settings.getSetting.mockImplementation(async (key) => (key === 'feature_rewards' ? '0' : null));
+    flagModel.setEnabled.mockResolvedValue({ key: 'rewards', enabled: false, updatedBy: 9 });
+
+    const updated = await featureService.setEnabled('rewards', false, 9);
+    expect(flagModel.setEnabled).toHaveBeenCalledWith('rewards', false, 9);
+    expect(updated.enabled).toBe(false);
+
+    // Next read re-resolves from the DB (cache cleared).
+    flagModel.getEnabledMap.mockResolvedValue({ rewards: false });
     const flags = await featureService.getFlags();
     expect(flags.rewards).toBe(false);
   });
 
   test('rejects an unknown feature key', async () => {
-    await expect(featureService.setOverride('bogus', true)).rejects.toThrow(/Unknown feature/);
+    await expect(featureService.setEnabled('bogus', true, 1)).rejects.toThrow(/Unknown feature/);
   });
 });
 
 describe('requireFeature middleware', () => {
   const run = async (enabled) => {
-    settings.getSetting.mockImplementation(async (key) =>
-      key === 'feature_rewards' ? (enabled ? '1' : '0') : null
-    );
+    flagModel.getEnabledMap.mockResolvedValue({ rewards: enabled });
     featureService._resetCache();
     const next = jest.fn();
-    const mw = requireFeature('rewards');
-    await mw({}, {}, next);
+    await requireFeature('rewards')({}, {}, next);
     return next;
   };
 
   test('calls next() when the feature is enabled', async () => {
     const next = await run(true);
     expect(next).toHaveBeenCalledTimes(1);
-    expect(next.mock.calls[0][0]).toBeUndefined(); // no error
+    expect(next.mock.calls[0][0]).toBeUndefined();
   });
 
-  test('passes a 404 ApiError to next() when disabled', async () => {
+  test('passes a 403 FEATURE_DISABLED error to next() when disabled', async () => {
     const next = await run(false);
-    expect(next).toHaveBeenCalledTimes(1);
     const err = next.mock.calls[0][0];
     expect(err).toBeInstanceOf(ApiError);
-    expect(err.statusCode).toBe(404);
+    expect(err.statusCode).toBe(403);
+    expect(err.code).toBe('FEATURE_DISABLED');
+    expect(err.feature).toBe('rewards');
   });
 });

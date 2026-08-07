@@ -791,3 +791,24 @@ export const getAssistantIntro = () =>
 // Ask the assistant a question. Returns a canned/templated reply + follow-ups.
 export const assistantQuery = (message: string) =>
   api.post<AssistantReply>("/assistant/query", { message }).then((r) => r.data);
+
+/* ============================== PLATFORM FEATURE FLAGS (admin) ============================== */
+
+// A DB-backed platform feature flag (source of truth). Managed only by admins.
+export type AdminFeatureFlag = {
+  key: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  updatedBy: number | null;
+  updatedByName: string | null;
+  updatedAt: string;
+};
+
+export const getAdminFeatures = () =>
+  api.get<{ features: AdminFeatureFlag[] }>("/admin/features").then((r) => r.data.features);
+
+export const setAdminFeature = (key: string, enabled: boolean) =>
+  api
+    .patch<{ feature: AdminFeatureFlag; features: AdminFeatureFlag[] }>(`/admin/features/${key}`, { enabled })
+    .then((r) => r.data);

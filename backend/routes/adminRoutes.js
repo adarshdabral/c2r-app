@@ -32,7 +32,7 @@ router.get("/overview", getAdminOverview);
 router.get("/settings", getSettings);
 router.patch("/settings/rewards", updateRewardsSetting);
 router.get("/features", getFeatureFlags);
-router.patch("/features", updateFeatureFlag);
+router.patch("/features/:key", updateFeatureFlag);
 
 // Account management
 router.get("/users", getUsers);

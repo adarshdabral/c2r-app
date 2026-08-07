@@ -1,10 +1,11 @@
 import { api } from "./api";
 
 /**
- * Client mirror of the backend feature flags (config/features.js). Fetched once
- * at boot from the public GET /api/features so the UI can hide surfaces, skip
- * nav entries, and avoid calling disabled endpoints. Keys must match the
- * backend FEATURE_KEYS exactly.
+ * Read-only client cache of the platform feature flags. This file does NOT
+ * control feature state — the backend `feature_flags` DATABASE table is the
+ * single source of truth, managed by admins. We fetch the resolved map once at
+ * boot from the public GET /api/features so the UI can hide surfaces, skip nav
+ * entries, and avoid calling disabled endpoints. Keys match the backend exactly.
  */
 export type FeatureKey = "personalization" | "rewards" | "chatbot";
 

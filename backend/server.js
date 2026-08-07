@@ -27,6 +27,8 @@ const siteContentRoutes = require('./routes/siteContentRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
 const featureRoutes = require('./routes/featureRoutes');
 const { requireFeature } = require('./middleware/featureFlag');
+const { FEATURE_REGISTRY } = require('./config/features');
+const featureFlagModel = require('./models/featureFlagModel');
 const adminRoutes = require("./routes/adminRoutes");
 
 
@@ -100,7 +102,11 @@ app.use((err, req, res, next) => {
   }
 
   res.status(statusCode).json({
-    message: statusCode >= 500 ? 'Internal server error' : err.message
+    message: statusCode >= 500 ? 'Internal server error' : err.message,
+    // Pass through machine-readable hints for operational errors (e.g. a
+    // disabled feature) so clients can branch without string-matching.
+    ...(err.code ? { code: err.code } : {}),
+    ...(err.feature ? { feature: err.feature } : {})
   });
 });
 
@@ -892,6 +898,25 @@ const createTables = async () => {
       INDEX idx_redemption_user (user_id, created_at)
     )
   `);
+
+  // ---- Platform feature flags (DB-backed single source of truth) ----
+  // Admin-managed via the dashboard. Env/defaults seed a row only once (below);
+  // after that the DB is authoritative and changes take effect immediately.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS feature_flags (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      \`key\` VARCHAR(40) NOT NULL UNIQUE,
+      name VARCHAR(80) NOT NULL,
+      description VARCHAR(255) NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_by INT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  // Seed each registered feature once (INSERT IGNORE keeps admin state intact).
+  for (const f of FEATURE_REGISTRY) {
+    await featureFlagModel.seedDefault(f);
+  }
 
   await seedEwasteTaxonomy();
   await seedRewardConfig();

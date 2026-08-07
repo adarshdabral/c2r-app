@@ -354,24 +354,29 @@ const updateRewardsSetting = asyncHandler(async (req, res) => {
 });
 
 /* ============================== FEATURE FLAGS ============================== */
-// Centralized product-feature toggles (personalization / rewards / chatbot).
-// Distinct from the rewards *operational* toggle above: this is the structural
-// on/off that gates routes, UI, and jobs platform-wide.
+// Centralized, DB-backed platform-feature management (personalization / rewards
+// / chatbot). The `feature_flags` table is the single source of truth; only
+// admins can read the detailed list or flip a flag, and changes take effect
+// immediately (the service cache is invalidated on write).
 
+// GET /admin/features — full list with metadata + who last changed each.
 const getFeatureFlags = asyncHandler(async (_req, res) => {
-  res.json({ features: await featureService.getFlags({ fresh: true }) });
+  res.json({ features: await featureService.list() });
 });
 
+// PATCH /admin/features/:key — enable/disable a single feature.
 const updateFeatureFlag = asyncHandler(async (req, res) => {
-  const { key, enabled } = req.body;
+  const { key } = req.params;
+  const { enabled } = req.body;
   if (!featureService.FEATURE_KEYS.includes(key)) {
     throw ApiError.badRequest(`key must be one of: ${featureService.FEATURE_KEYS.join(', ')}`);
   }
   if (typeof enabled !== 'boolean') {
     throw ApiError.badRequest('enabled (boolean) is required');
   }
-  await featureService.setOverride(key, enabled);
-  res.json({ features: await featureService.getFlags({ fresh: true }) });
+  const updated = await featureService.setEnabled(key, enabled, req.user.id);
+  if (!updated) throw ApiError.notFound('Feature not found');
+  res.json({ feature: updated, features: await featureService.list() });
 });
 
 module.exports = {

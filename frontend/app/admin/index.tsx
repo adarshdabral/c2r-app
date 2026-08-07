@@ -50,6 +50,7 @@ import {
   type SelectOption,
 } from "@/components/ui";
 import { ContentSection } from "@/features/admin-content";
+import { PlatformFeatures } from "@/features/PlatformFeatures";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GradientHeader } from "@/components/GradientHeader";
 import { PressableScale } from "@/components/motion/PressableScale";
@@ -1153,6 +1154,13 @@ function SettingsSection() {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+      {/* Platform Features — DB-backed feature flags (single source of truth). */}
+      <PlatformFeatures />
+
+      <View className="mt-6 mb-3 flex-row items-center gap-2">
+        <SettingsIcon size={16} color={ADMIN_COLORS.muted} />
+        <Text className="text-[15px] font-bold">Reward activation</Text>
+      </View>
       <Card>
         <View className="gap-4 p-5">
           <View className="flex-row items-start justify-between gap-4">
