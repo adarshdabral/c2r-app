@@ -13,12 +13,12 @@ import { Redirect, useRouter } from "expo-router";
 import { useFeature } from "@/context/FeatureContext";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { ArrowLeft, ArrowRight, Send, Sparkles } from "lucide-react-native";
-import { Text } from "@/components/ui";
+import { ArrowLeft, ArrowRight, Check, Send, Sparkles, X } from "lucide-react-native";
+import { Text, Button } from "@/components/ui";
 import { PressableScale } from "@/components/motion/PressableScale";
 import { DOMAIN } from "@/lib/domains";
 import { useColors } from "@/lib/theme";
-import { assistantQuery, getAssistantIntro, type AssistantAction } from "@/lib/api";
+import { assistantQuery, assistantExecute, getAssistantIntro, type AssistantAction } from "@/lib/api";
 
 type Msg = {
   id: string;
@@ -26,6 +26,8 @@ type Msg = {
   text: string;
   suggestions?: string[];
   action?: AssistantAction;
+  confirm?: { actionId: string; params?: Record<string, any> } | null;
+  resolved?: boolean; // a confirm card that's been actioned
 };
 
 let seq = 0;
@@ -38,6 +40,7 @@ export default function AssistantScreen() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [convId, setConvId] = useState<number | undefined>(undefined);
   const scrollRef = useRef<ScrollView>(null);
 
   // Greeting + starter chips.
@@ -68,10 +71,18 @@ export default function AssistantScreen() {
     setSending(true);
     scrollDown();
     try {
-      const res = await assistantQuery(text);
+      const res = await assistantQuery(text, convId);
+      setConvId(res.conversationId);
       setMessages((prev) => [
         ...prev,
-        { id: nextId(), from: "bot", text: res.reply, suggestions: res.suggestions, action: res.action },
+        {
+          id: nextId(),
+          from: "bot",
+          text: res.reply,
+          suggestions: res.suggestions,
+          action: res.action,
+          confirm: res.type === "confirm" && res.actionId ? { actionId: res.actionId, params: res.params } : null,
+        },
       ]);
     } catch {
       setMessages((prev) => [
@@ -81,6 +92,34 @@ export default function AssistantScreen() {
           from: "bot",
           text: "I couldn't reach the server just now. Please check your connection and try again.",
         },
+      ]);
+    } finally {
+      setSending(false);
+      scrollDown();
+    }
+  };
+
+  // Confirm/cancel a pending write action.
+  const resolveConfirm = async (msgId: string, confirm: { actionId: string; params?: Record<string, any> }, ok: boolean) => {
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, resolved: true } : m)));
+    if (!ok) {
+      setMessages((prev) => [...prev, { id: nextId(), from: "bot", text: "Okay, cancelled — nothing was changed." }]);
+      scrollDown();
+      return;
+    }
+    setSending(true);
+    scrollDown();
+    try {
+      const res = await assistantExecute(confirm.actionId, confirm.params, convId);
+      setConvId(res.conversationId);
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), from: "bot", text: res.reply, suggestions: res.suggestions, action: res.action },
+      ]);
+    } catch (e: any) {
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), from: "bot", text: e?.response?.data?.message || "That action couldn't be completed." },
       ]);
     } finally {
       setSending(false);
@@ -130,7 +169,13 @@ export default function AssistantScreen() {
           showsVerticalScrollIndicator={false}
         >
           {messages.map((m) => (
-            <Bubble key={m.id} msg={m} onChip={send} onAction={(href) => router.push(href as any)} />
+            <Bubble
+              key={m.id}
+              msg={m}
+              onChip={send}
+              onAction={(href) => router.push(href as any)}
+              onConfirm={(ok) => m.confirm && resolveConfirm(m.id, m.confirm, ok)}
+            />
           ))}
           {sending ? (
             <View className="flex-row items-center gap-2 self-start rounded-2xl rounded-bl-md bg-card px-4 py-3 shadow-clay-sm">
@@ -175,10 +220,12 @@ function Bubble({
   msg,
   onChip,
   onAction,
+  onConfirm,
 }: {
   msg: Msg;
   onChip: (text: string) => void;
   onAction: (href: string) => void;
+  onConfirm: (ok: boolean) => void;
 }) {
   const c = useColors();
   const isBot = msg.from === "bot";
@@ -196,6 +243,20 @@ function Bubble({
           {msg.text}
         </Text>
       </View>
+
+      {/* Confirmation card for a pending write action */}
+      {isBot && msg.confirm && !msg.resolved ? (
+        <View className="mt-2 flex-row gap-2">
+          <Button size="sm" onPress={() => onConfirm(true)} className="flex-row gap-1.5 px-4">
+            <Check size={15} color="#fff" />
+            <Text className="text-[13px] font-semibold text-primary-foreground">Confirm</Text>
+          </Button>
+          <Button size="sm" variant="outline" onPress={() => onConfirm(false)} className="flex-row gap-1.5 px-4">
+            <X size={15} color={c.mutedForeground} />
+            <Text className="text-[13px] font-semibold">Cancel</Text>
+          </Button>
+        </View>
+      ) : null}
 
       {/* CTA deep link */}
       {isBot && msg.action ? (

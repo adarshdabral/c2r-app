@@ -813,26 +813,55 @@ export const deleteSiteItem = (id: number) =>
 export const siteItemMediaUrl = (id: number, v?: number | string) =>
   absoluteMediaUrl(`/api/site-content/items/${id}/media${v !== undefined ? `?v=${v}` : ""}`);
 
-/* ============================== ASSISTANT (rule/intent engine) ============================== */
+/* ============================== ASSISTANT (action-executing chatbot) ============================== */
 
 export type AssistantAction = { label: string; href: string } | null;
 
+// A typed assistant response: info reply, an executed action, or a write action
+// awaiting confirmation.
 export type AssistantReply = {
-  intent: string;
+  type: "info" | "action" | "confirm";
+  conversationId: number;
   reply: string;
-  suggestions: string[];
-  action: AssistantAction;
+  intent?: string;
+  actionId?: string;
+  params?: Record<string, any>;
+  quickReplies?: string[];
+  suggestions?: string[];
+  action?: AssistantAction;
+  data?: any;
 };
 
-export type AssistantIntro = { greeting: string; suggestions: string[] };
+export type AssistantActionMeta = { id: string; title: string; confirm: boolean };
+export type AssistantIntro = { greeting: string; suggestions: string[]; actions: AssistantActionMeta[] };
 
-// Starter greeting + role-aware suggested prompts.
+export type ChatMessage = {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  intent: string | null;
+  action: string | null;
+  meta: any;
+  createdAt: string;
+};
+
+// Starter greeting + role-aware suggested prompts + available actions.
 export const getAssistantIntro = () =>
   api.get<AssistantIntro>("/assistant/suggestions").then((r) => r.data);
 
-// Ask the assistant a question. Returns a canned/templated reply + follow-ups.
-export const assistantQuery = (message: string) =>
-  api.post<AssistantReply>("/assistant/query", { message }).then((r) => r.data);
+// Ask the assistant. Returns info / action / confirm.
+export const assistantQuery = (message: string, conversationId?: number) =>
+  api.post<AssistantReply>("/assistant/query", { message, conversationId }).then((r) => r.data);
+
+// Execute a confirmed action.
+export const assistantExecute = (actionId: string, params?: Record<string, any>, conversationId?: number) =>
+  api.post<AssistantReply>("/assistant/execute", { actionId, params, conversationId }).then((r) => r.data);
+
+// Load a conversation's message history.
+export const getAssistantHistory = (conversationId?: number) =>
+  api
+    .get<{ conversationId: number; messages: ChatMessage[] }>("/assistant/history", { params: { conversationId } })
+    .then((r) => r.data);
 
 /* ============================== PLATFORM FEATURE FLAGS (admin) ============================== */
 
