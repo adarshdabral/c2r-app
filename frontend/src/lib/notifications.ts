@@ -1,10 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   api,
+  getServerNotifications,
   type PickupRequest,
   type PickupStatus,
   type DropOffRequest,
   type DropOffStatus,
+  type ServerNotification,
 } from "@/lib/api";
 
 /**
@@ -23,7 +25,7 @@ export type NotificationTone = "info" | "success" | "action" | "muted";
 
 export type AppNotification = {
   id: string; // stable per (source,requestId,status) so a status change reads as new
-  source: "pickup" | "dropoff";
+  source: string;
   requestId: number;
   title: string;
   body: string;
@@ -86,15 +88,45 @@ const dropoffToNotification = (r: DropOffRequest): AppNotification => {
   };
 };
 
+const TONE_BY_CATEGORY: Record<string, NotificationTone> = {
+  reward: "success",
+  drive: "info",
+  admin: "info",
+  chatbot: "muted",
+  feature: "info",
+  system: "muted",
+};
+
+// Map a server notification to the shared feed shape. Pickup/drop-off categories
+// are excluded (they're already synthesized locally with the handover OTP).
+const serverToNotification = (n: ServerNotification): AppNotification => ({
+  id: `srv-${n.id}`,
+  source: n.category,
+  requestId: n.data?.refId ?? 0,
+  title: n.title,
+  body: n.body || "",
+  tone: TONE_BY_CATEGORY[n.category] || "info",
+  timestamp: n.createdAt,
+  href: n.data?.href || "/notifications",
+});
+
 /** Fetch + synthesize the user's notifications, newest first. Never throws. */
 export async function fetchNotifications(): Promise<AppNotification[]> {
-  const [pickups, dropoffs] = await Promise.all([
+  const [pickups, dropoffs, server] = await Promise.all([
     api.get<PickupRequest[]>("/pickup-requests/mine").then((r) => r.data).catch(() => []),
     api.get<DropOffRequest[]>("/dropoff-requests/mine").then((r) => r.data).catch(() => []),
+    // Server-stored notifications (rewards, drives, admin broadcasts, chatbot).
+    // Best-effort: 403 when the notifications feature is off → empty.
+    getServerNotifications()
+      .then((r) => r.notifications)
+      .catch(() => [] as ServerNotification[]),
   ]);
   const items = [
     ...(Array.isArray(pickups) ? pickups : []).map(pickupToNotification),
     ...(Array.isArray(dropoffs) ? dropoffs : []).map(dropoffToNotification),
+    ...(Array.isArray(server) ? server : [])
+      .filter((n) => !["pickup", "dropoff"].includes(n.category))
+      .map(serverToNotification),
   ];
   return items.sort((a, b) =>
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -109,6 +141,9 @@ export async function getLastSeen(): Promise<number> {
 
 export async function markAllSeen(): Promise<void> {
   await AsyncStorage.setItem(LAST_SEEN_KEY, String(Date.now()));
+  // Also clear server-side unread (best-effort; no-op if the feature is off).
+  const { markAllNotificationsRead } = await import("@/lib/api");
+  markAllNotificationsRead().catch(() => {});
 }
 
 export function countUnread(items: AppNotification[], lastSeen: number): number {

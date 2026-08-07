@@ -4,6 +4,7 @@ const drives = require('../models/collectionDriveModel');
 const driveReportService = require('../services/driveReportService');
 const driveReportModel = require('../models/collectionDriveReportModel');
 const rewardEngine = require('../services/rewardEngine');
+const notificationService = require('../services/notificationService');
 
 const parseId = (raw, label = 'drive id') => {
   const id = Number(raw);
@@ -112,7 +113,16 @@ const rsvp = asyncHandler(async (req, res) => {
   await drives.rsvp(id, req.user.id);
   // Reward for joining a drive (idempotent per drive; best-effort).
   rewardEngine.awardSafe(req.user.id, 'drive_joined', { refType: 'drive', refId: id });
-  res.status(201).json(await drives.getById(id, req.user.id));
+  const drive = await drives.getById(id, req.user.id);
+  notificationService.notifySafe({
+    userId: req.user.id,
+    category: 'drive',
+    type: 'drive_joined',
+    title: `You're going to ${drive.title}`,
+    body: drive.scheduledDate ? `On ${String(drive.scheduledDate).slice(0, 10)}${drive.timeWindow ? ` · ${drive.timeWindow}` : ''}` : null,
+    data: { href: '/drives', refType: 'drive', refId: id },
+  });
+  res.status(201).json(drive);
 });
 
 // DELETE /api/collection-drives/:id/rsvp  (user)

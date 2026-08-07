@@ -27,6 +27,7 @@ const siteContentRoutes = require('./routes/siteContentRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
 const featureRoutes = require('./routes/featureRoutes');
 const personalizationRoutes = require('./routes/personalizationRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { requireFeature } = require('./middleware/featureFlag');
 const { FEATURE_REGISTRY } = require('./config/features');
 const featureFlagModel = require('./models/featureFlagModel');
@@ -82,6 +83,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/site-content', siteContentRoutes);
 app.use('/api/assistant', requireFeature('chatbot'), assistantRoutes);
 app.use('/api/personalization', requireFeature('personalization'), personalizationRoutes);
+app.use('/api/notifications', requireFeature('notifications'), notificationRoutes);
 app.use("/api/admin", adminRoutes);
 
 /* ----------------------- 404 HANDLER ----------------------- */
@@ -919,6 +921,51 @@ const createTables = async () => {
   for (const f of FEATURE_REGISTRY) {
     await featureFlagModel.seedDefault(f);
   }
+
+  // ---- Centralized notifications (in-app; email/push-ready via `channel`) ----
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      category VARCHAR(30) NOT NULL,
+      type VARCHAR(60) NOT NULL,
+      title VARCHAR(160) NOT NULL,
+      body VARCHAR(500) NULL,
+      data JSON NULL,
+      channel VARCHAR(20) NOT NULL DEFAULT 'in_app',
+      read_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_notif_user (user_id, created_at),
+      INDEX idx_notif_unread (user_id, read_at)
+    )
+  `);
+
+  // ---- Chatbot conversations + messages (assistant memory / history) ----
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS chat_conversations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      title VARCHAR(160) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_chat_conv_user (user_id, updated_at)
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      conversation_id INT NOT NULL,
+      user_id INT NOT NULL,
+      role ENUM('user','assistant') NOT NULL,
+      content TEXT NOT NULL,
+      intent VARCHAR(60) NULL,
+      action VARCHAR(60) NULL,
+      meta JSON NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_chat_msg_conv (conversation_id, created_at),
+      INDEX idx_chat_msg_user (user_id, created_at)
+    )
+  `);
 
   await seedEwasteTaxonomy();
   await seedRewardConfig();

@@ -15,6 +15,7 @@ const {
 } = require('../models/dropOffRequestModel');
 const { verifyOtp, getHistory } = require('../models/otpVerificationModel');
 const { awardForCompletion } = require('../services/rewardsService');
+const notificationService = require('../services/notificationService');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
@@ -173,6 +174,14 @@ const collectHandler = asyncHandler(async (req, res) => {
   // (a no-op when the feature is off / ledger unconfigured; never blocks the
   // response or affects the completion).
   awardForCompletion(request, 'dropoff');
+  notificationService.notifySafe({
+    userId: request.userId,
+    category: 'dropoff',
+    type: 'dropoff_completed',
+    title: 'Drop-off completed 🎉',
+    body: 'Your e-waste was received and recycled. Thank you!',
+    data: { href: '/dropoff/mine', refType: 'dropoff', refId: request.id },
+  });
   return res.status(200).json({ message: 'Drop-off completed', request });
 });
 

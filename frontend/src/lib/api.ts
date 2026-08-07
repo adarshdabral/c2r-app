@@ -896,3 +896,29 @@ export type PersonalizationHome = {
 // The personalized home bundle. Only called when the personalization flag is on.
 export const getPersonalizationHome = () =>
   api.get<PersonalizationHome>("/personalization/home").then((r) => r.data);
+
+/* ============================== NOTIFICATIONS ============================== */
+
+export type ServerNotification = {
+  id: number;
+  category: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: { href?: string; refType?: string; refId?: number } | null;
+  read: boolean;
+  createdAt: string;
+};
+
+export const getServerNotifications = () =>
+  api.get<{ notifications: ServerNotification[]; unread: number }>("/notifications").then((r) => r.data);
+
+export const markNotificationRead = (id: number) =>
+  api.patch<{ unread: number }>(`/notifications/${id}/read`).then((r) => r.data);
+
+export const markAllNotificationsRead = () =>
+  api.post<{ updated: number; unread: number }>("/notifications/read-all").then((r) => r.data);
+
+// Admin broadcast to all users (or one role).
+export const broadcastNotification = (payload: { title: string; body?: string; role?: string }) =>
+  api.post<{ delivered: number }>("/notifications/admin/broadcast", payload).then((r) => r.data);

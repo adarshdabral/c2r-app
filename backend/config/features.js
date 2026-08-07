@@ -34,6 +34,24 @@ const FEATURE_REGISTRY = [
     description: 'The role-aware assistant and its platform actions.',
     default: parseBool(process.env.FEATURE_CHATBOT, true),
   },
+  {
+    key: 'notifications',
+    name: 'Notifications',
+    description: 'In-app notifications for rewards, pickups, drives, and admin broadcasts.',
+    default: parseBool(process.env.FEATURE_NOTIFICATIONS, true),
+  },
+  {
+    key: 'activity',
+    name: 'Activity History',
+    description: 'A unified timeline of a user\'s activity across the platform.',
+    default: parseBool(process.env.FEATURE_ACTIVITY, true),
+  },
+  {
+    key: 'analytics',
+    name: 'Admin Analytics',
+    description: 'Expanded platform analytics, charts, and exports in the admin dashboard.',
+    default: parseBool(process.env.FEATURE_ANALYTICS, true),
+  },
 ];
 
 const FEATURE_KEYS = FEATURE_REGISTRY.map((f) => f.key);

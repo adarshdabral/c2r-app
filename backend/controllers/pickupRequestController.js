@@ -19,6 +19,7 @@ const {
 const { verifyOtp, getHistory } = require('../models/otpVerificationModel');
 const { awardForCompletion } = require('../services/rewardsService');
 const rewardEngine = require('../services/rewardEngine');
+const notificationService = require('../services/notificationService');
 const { generateTransactionReportSafe } = require('../services/reportService');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
@@ -155,6 +156,14 @@ const acceptHandler = asyncHandler(async (req, res) => {
   await acceptRequest(id, req.user.id);
   await armForCollection(id);
   const request = await getRequestById(id);
+  notificationService.notifySafe({
+    userId: request.userId,
+    category: 'pickup',
+    type: 'pickup_accepted',
+    title: 'A recycler accepted your pickup',
+    body: `Your ${request.wasteCategory || 'e-waste'} pickup was accepted. Share the OTP to complete it.`,
+    data: { href: '/pickups', refType: 'pickup', refId: id },
+  });
   return res.status(200).json({
     message: 'Pickup accepted. Ask the customer for the OTP shown on their dashboard to complete collection.',
     request
@@ -177,6 +186,14 @@ const collectHandler = asyncHandler(async (req, res) => {
   // Bulk producers get an auto-generated transaction report (best-effort, no-op
   // for other user types).
   generateTransactionReportSafe(request);
+  notificationService.notifySafe({
+    userId: request.userId,
+    category: 'pickup',
+    type: 'pickup_completed',
+    title: 'Pickup completed 🎉',
+    body: 'Your e-waste was collected and recycled. Thank you for recycling responsibly!',
+    data: { href: '/pickups', refType: 'pickup', refId: request.id },
+  });
   return res.status(200).json({ message: 'Pickup completed', request });
 });
 
